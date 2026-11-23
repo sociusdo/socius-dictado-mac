@@ -21,10 +21,12 @@ enum Theme {
     static let success   = Color(hex: "#22C55E")!   // green ~1s when done
     static let ringTrack = Color.white.opacity(0.25)
 
-    /// A modern 3-stop gradient derived from any base color (lighter → base → deeper),
-    /// so a custom SociusPurpleHex still looks right.
+    static let nearBlack = Color(hex: "#0B0B0D")!
+
+    /// Modern gradient: the color up top fading to near-black at the bottom.
+    /// Derived from any base color, so a custom SociusPurpleHex still looks right.
     static func gradient(for base: Color) -> [Color] {
-        [base.adjust(brightness: 0.16), base, base.adjust(brightness: -0.18)]
+        [base.adjust(brightness: 0.10), base, nearBlack]
     }
 }
 

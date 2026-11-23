@@ -11,46 +11,43 @@ struct OrbView: View {
     private let orbSize: CGFloat = 64
 
     var body: some View {
-        VStack(spacing: 8) {
+        // Inner stack is sized to its content, so the hover region matches
+        // exactly what's visible (orb, or orb+menu) — no empty-space hover.
+        VStack(spacing: 6) {
             if hovering && !menuItems.isEmpty {
-                menu.transition(.opacity.combined(with: .move(edge: .bottom)))
+                menu.transition(.opacity)
             }
             orb
         }
-        .padding(.bottom, 3)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .padding(6)
+        .fixedSize()
         .contentShape(Rectangle())
         .onHover { h in
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { hovering = h }
-            onHover(h)
+            withAnimation(.easeOut(duration: 0.16)) { hovering = h }
+            onHover(h)   // lets the panel widen its click-through region
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 
     // MARK: Orb
     private var orb: some View {
         ZStack {
-            // Frosted translucency — the desktop shows through faintly.
-            Circle().fill(.ultraThinMaterial)
-
-            // Modern translucent gradient (lighter → base → deeper).
+            // Modern gradient: color up top fading to near-black at the bottom.
             Circle()
                 .fill(LinearGradient(colors: Theme.gradient(for: baseColor),
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-                .opacity(0.82)
+                                     startPoint: .top, endPoint: .bottom))
 
-            // Glossy top highlight.
+            // Subtle same-hue sheen near the top (no white).
             Circle()
-                .fill(RadialGradient(colors: [.white.opacity(0.5), .clear],
-                                     center: UnitPoint(x: 0.32, y: 0.22),
-                                     startRadius: 1, endRadius: orbSize * 0.7))
-                .blendMode(.screen)
-
-            Circle().stroke(Color.white.opacity(0.28), lineWidth: 1)
+                .fill(RadialGradient(colors: [baseColor.adjust(brightness: 0.22).opacity(0.5), .clear],
+                                     center: UnitPoint(x: 0.3, y: 0.18),
+                                     startRadius: 1, endRadius: orbSize * 0.65))
 
             if controller.state == .transcribing {
                 Circle()
                     .trim(from: 0, to: 0.28)
-                    .stroke(Color.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .stroke(baseColor.adjust(brightness: 0.4),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .frame(width: orbSize - 8, height: orbSize - 8)
                     .rotationEffect(.degrees(ringRotation))
             }
@@ -61,7 +58,9 @@ struct OrbView: View {
                 .symbolEffect(.pulse, isActive: controller.state == .recording)
         }
         .frame(width: orbSize, height: orbSize)
-        .shadow(color: baseColor.opacity(0.5), radius: 12, y: 5)
+        .clipShape(Circle())                       // keep the gradient strictly inside the circle
+        .overlay(Circle().strokeBorder(baseColor.adjust(brightness: 0.3).opacity(0.45), lineWidth: 0.8))
+        .shadow(color: Theme.nearBlack.opacity(0.4), radius: 12, y: 5)
         .scaleEffect(controller.state == .recording ? 1.0 + CGFloat(controller.level) * 0.16 : 1.0)
         .animation(.easeOut(duration: 0.08), value: controller.level)
         .contentShape(Circle())

@@ -4,47 +4,38 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: FloatingPanel!
+    private var hitView: HitRegionView!
     private let controller = DictationController()
 
-    private let collapsed = NSSize(width: 70, height: 70)
-    private let expanded  = NSSize(width: 120, height: 210)
+    // Fixed size: orb at the bottom, room above for the hover menu.
+    private let panelSize = NSSize(width: 120, height: 210)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let origin = NSPoint(x: screen.maxX - collapsed.width - 24,
-                             y: screen.minY + 90)
-        let rect = NSRect(origin: origin, size: collapsed)
+        let origin = NSPoint(x: screen.maxX - panelSize.width - 12,
+                             y: screen.minY + 70)
+        let rect = NSRect(origin: origin, size: panelSize)
 
         panel = FloatingPanel(contentRect: rect)
 
+        hitView = HitRegionView(frame: NSRect(origin: .zero, size: panelSize))
+        hitView.autoresizingMask = [.width, .height]
+
         let root = OrbView(controller: controller) { [weak self] expand in
-            self?.setExpanded(expand)
+            self?.hitView.expanded = expand   // widen click-through while menu is open
         }
         let hosting = NSHostingView(rootView: root)
-        hosting.frame = panel.contentView!.bounds
+        hosting.frame = hitView.bounds
         hosting.autoresizingMask = [.width, .height]
-        panel.contentView?.addSubview(hosting)
+        hitView.addSubview(hosting)
 
+        panel.contentView = hitView
         panel.orderFrontRegardless()
 
         // Ask for Accessibility up front (needed to paste). Non-blocking prompt.
         if !Permissions.accessibilityTrusted() {
             Permissions.requestAccessibility()
         }
-    }
-
-    /// Grow the window upward (menu area) on hover; shrink back on exit.
-    /// Keeps the orb's horizontal center and bottom edge fixed.
-    private func setExpanded(_ expand: Bool) {
-        let f = panel.frame
-        let target = expand ? expanded : collapsed
-        let centerX = f.midX
-        let bottomY = f.minY
-        let newFrame = NSRect(x: centerX - target.width / 2,
-                              y: bottomY,
-                              width: target.width,
-                              height: target.height)
-        panel.setFrame(newFrame, display: true, animate: false)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

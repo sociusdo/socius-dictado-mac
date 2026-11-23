@@ -22,3 +22,24 @@ final class FloatingPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }
+
+/// Content view that only "catches" the mouse over the visible orb (idle) or
+/// the whole column (while the hover menu is open). Everywhere else clicks pass
+/// straight through to the app underneath — so the panel never blocks the corner.
+final class HitRegionView: NSView {
+    var expanded = false
+    private let orbCenterY: CGFloat = 42   // from the bottom edge
+    private let orbRadius: CGFloat = 40
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let p = superview.map { convert(point, from: $0) } ?? point
+        if expanded {
+            return bounds.contains(p) ? super.hitTest(point) : nil
+        }
+        let center = CGPoint(x: bounds.midX, y: orbCenterY)
+        return hypot(p.x - center.x, p.y - center.y) <= orbRadius ? super.hitTest(point) : nil
+    }
+
+    // Allow clicking the orb even when the app isn't active (non-activating panel).
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
