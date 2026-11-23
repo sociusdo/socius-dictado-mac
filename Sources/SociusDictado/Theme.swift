@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// Socius branding. `purpleHex` is the single source of truth for the brand
 /// color — change it here (or it will be read from UserDefaults key
@@ -19,6 +20,25 @@ enum Theme {
     static let recording = Color(hex: "#EF4444")!   // red while recording
     static let success   = Color(hex: "#22C55E")!   // green ~1s when done
     static let ringTrack = Color.white.opacity(0.25)
+
+    /// A modern 3-stop gradient derived from any base color (lighter → base → deeper),
+    /// so a custom SociusPurpleHex still looks right.
+    static func gradient(for base: Color) -> [Color] {
+        [base.adjust(brightness: 0.16), base, base.adjust(brightness: -0.18)]
+    }
+}
+
+extension Color {
+    /// Shift brightness (in HSB space) by `delta`, keeping hue/saturation.
+    func adjust(brightness delta: CGFloat) -> Color {
+        guard let ns = NSColor(self).usingColorSpace(.deviceRGB) else { return self }
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        ns.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        return Color(hue: Double(h),
+                     saturation: Double(min(1, max(0, s))),
+                     brightness: Double(min(1, max(0, b + delta))),
+                     opacity: Double(a))
+    }
 }
 
 extension Color {

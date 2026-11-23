@@ -29,10 +29,23 @@ struct OrbView: View {
     // MARK: Orb
     private var orb: some View {
         ZStack {
+            // Frosted translucency — the desktop shows through faintly.
+            Circle().fill(.ultraThinMaterial)
+
+            // Modern translucent gradient (lighter → base → deeper).
             Circle()
-                .fill(fillColor)
-                .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 1))
-                .shadow(color: fillColor.opacity(0.45), radius: 10, y: 4)
+                .fill(LinearGradient(colors: Theme.gradient(for: baseColor),
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .opacity(0.82)
+
+            // Glossy top highlight.
+            Circle()
+                .fill(RadialGradient(colors: [.white.opacity(0.5), .clear],
+                                     center: UnitPoint(x: 0.32, y: 0.22),
+                                     startRadius: 1, endRadius: orbSize * 0.7))
+                .blendMode(.screen)
+
+            Circle().stroke(Color.white.opacity(0.28), lineWidth: 1)
 
             if controller.state == .transcribing {
                 Circle()
@@ -48,6 +61,7 @@ struct OrbView: View {
                 .symbolEffect(.pulse, isActive: controller.state == .recording)
         }
         .frame(width: orbSize, height: orbSize)
+        .shadow(color: baseColor.opacity(0.5), radius: 12, y: 5)
         .scaleEffect(controller.state == .recording ? 1.0 + CGFloat(controller.level) * 0.16 : 1.0)
         .animation(.easeOut(duration: 0.08), value: controller.level)
         .contentShape(Circle())
@@ -112,11 +126,11 @@ struct OrbView: View {
     }
 
     // MARK: Appearance
-    private var fillColor: Color {
+    private var baseColor: Color {
         switch controller.state {
         case .recording: return Theme.recording
         case .done, .copiedOnly: return Theme.success
-        case .error: return Theme.recording.opacity(0.9)
+        case .error: return Theme.recording
         default: return Theme.purple
         }
     }
