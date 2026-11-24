@@ -18,7 +18,8 @@ enum Theme {
     static var purpleDark: Color { purple.opacity(0.85) }
 
     static let recording = Color(hex: "#EF4444")!   // red while recording
-    static let success   = Color(hex: "#22C55E")!   // green ~1s when done
+    static let success   = Color(hex: "#22C55E")!   // green ~1s when pasted
+    static let warning   = Color(hex: "#F59E0B")!   // amber = only copied, not pasted
     static let ringTrack = Color.white.opacity(0.25)
 
     static let nearBlack = Color(hex: "#0B0B0D")!

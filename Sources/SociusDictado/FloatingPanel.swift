@@ -2,7 +2,9 @@ import AppKit
 
 /// A non-activating, always-on-top panel that shows on every Space and floats
 /// above full-screen apps — like the iPhone AssistiveTouch button.
-final class FloatingPanel: NSPanel {
+final class FloatingPanel: NSPanel, NSWindowDelegate {
+    private var clamping = false
+
     init(contentRect: NSRect) {
         super.init(contentRect: contentRect,
                    styleMask: [.borderless, .nonactivatingPanel],
@@ -17,10 +19,23 @@ final class FloatingPanel: NSPanel {
         isMovableByWindowBackground = true
         acceptsMouseMovedEvents = true
         hidesOnDeactivate = false
+        delegate = self
     }
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+
+    // Fires on EVERY move (including the system's background drag, which bypasses
+    // the setFrame overrides). Snap the orb back inside the visible screen.
+    func windowDidMove(_ notification: Notification) {
+        guard !clamping else { return }
+        let clamped = clampedOrigin(frame.origin)
+        if clamped.x != frame.origin.x || clamped.y != frame.origin.y {
+            clamping = true
+            setFrameOrigin(clamped)
+            clamping = false
+        }
+    }
 
     // Keep the visible orb fully on screen while dragging. The orb sits at a
     // fixed spot inside this (taller, mostly transparent) panel, so we clamp the

@@ -37,7 +37,7 @@ enum Paster {
     /// Requires Accessibility permission. Returns false if it isn't granted.
     @discardableResult
     static func pasteAtCursor(_ text: String) -> Bool {
-        guard AXIsProcessTrusted() else { return false }
+        guard AXIsProcessTrusted() else { Diag.log("pasteAtCursor: NOT trusted"); return false }
 
         let pb = NSPasteboard.general
         pb.clearContents()
@@ -54,6 +54,7 @@ enum Paster {
         up?.flags = .maskCommand
         down?.post(tap: .cghidEventTap)
         up?.post(tap: .cghidEventTap)
+        Diag.log("pasteAtCursor: posted Cmd+V (down=\(down != nil) up=\(up != nil))")
         return true
     }
 }

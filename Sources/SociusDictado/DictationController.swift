@@ -22,7 +22,6 @@ final class DictationController: ObservableObject {
     private let store = TranscriptStore.shared
     private var lastRecordingURL: URL?
     private var task: Task<Void, Never>?
-    private var promptedAccessibility = false
     private var recordingStarted: Date?
     private var lastDuration: TimeInterval = 0
 
@@ -111,16 +110,18 @@ final class DictationController: ObservableObject {
     private func deliver(_ text: String) {
         Paster.copyToClipboard(text)   // safety net: transcript is always copied
 
-        guard Permissions.accessibilityTrusted() else {
-            // No Accessibility permission -> cannot paste. Copy only + explain once.
+        let trusted = Permissions.accessibilityTrusted()
+        let front = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
+        Diag.log("deliver: trusted=\(trusted) front=\(front) chars=\(text.count)")
+
+        guard trusted else {
+            // No Accessibility permission -> cannot paste. Copy only + explain.
             flashDone(.copiedOnly)
-            if !promptedAccessibility {
-                promptedAccessibility = true
-                presentAccessibilityAlert()
-            }
+            presentAccessibilityAlert()
             return
         }
-        Paster.pasteAtCursor(text)     // don't gate on fragile focus detection
+        let ok = Paster.pasteAtCursor(text)   // don't gate on fragile focus detection
+        Diag.log("deliver: pasteAtCursor returned \(ok)")
         flashDone(.done)
     }
 

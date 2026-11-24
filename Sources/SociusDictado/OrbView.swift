@@ -118,7 +118,8 @@ struct OrbView: View {
     private var baseColor: Color {
         switch controller.state {
         case .recording: return Theme.recording
-        case .done, .copiedOnly: return Theme.success
+        case .done: return Theme.success
+        case .copiedOnly: return Theme.warning   // amber: copied but NOT pasted
         case .error: return Theme.recording
         default: return Theme.purple
         }
