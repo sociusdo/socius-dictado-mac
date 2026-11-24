@@ -8,18 +8,24 @@ struct TranscriptItem: Identifiable, Codable, Equatable {
     let duration: TimeInterval   // seconds of audio recorded
     let model: String
     var text: String
+    var aiTitle: String?         // short AI summary; filled in shortly after saving
 
     var words: Int {
         text.split { $0 == " " || $0 == "\n" }.count
     }
 
-    /// Short auto-title derived from the content (ChatGPT-style), computed so old
-    /// history gets titles too. First line/clause, trimmed to a word boundary.
+    /// What the UI shows: the AI summary when ready, else a first-line fallback.
     var title: String {
+        if let t = aiTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty { return t }
+        return fallbackTitle
+    }
+
+    /// Instant local title (first clause) used until the AI title arrives, and for
+    /// old history items that were saved before AI titles existed.
+    var fallbackTitle: String {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "(vacío)" }
         var clause = trimmed.split(separator: "\n").first.map(String.init) ?? trimmed
-        // Prefer ending at the first sentence break if it comes reasonably early.
         if let end = clause.firstIndex(where: { ".!?".contains($0) }) {
             let head = String(clause[..<end])
             if head.count >= 12 { clause = head }
@@ -67,9 +73,17 @@ final class TranscriptStore: ObservableObject {
         load()
     }
 
-    func add(text: String, duration: TimeInterval, model: String) {
-        let item = TranscriptItem(id: UUID(), date: Date(), duration: duration, model: model, text: text)
+    @discardableResult
+    func add(text: String, duration: TimeInterval, model: String) -> UUID {
+        let item = TranscriptItem(id: UUID(), date: Date(), duration: duration, model: model, text: text, aiTitle: nil)
         items.insert(item, at: 0)   // newest first
+        save()
+        return item.id
+    }
+
+    func setTitle(id: UUID, _ title: String) {
+        guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        items[i].aiTitle = title
         save()
     }
 

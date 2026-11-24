@@ -2,6 +2,16 @@ import AppKit
 import SwiftUI
 import Combine
 
+/// NSHostingView that accepts the first click in a non-activating (background)
+/// window. Without this, the panel never becomes key, so SwiftUI's first click on
+/// a transient view (the hover menu) is swallowed to "activate" and the tap is
+/// lost — which is why "Cancelar" never fired.
+final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    required init(rootView: Content) { super.init(rootView: rootView) }
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: FloatingPanel!
@@ -49,7 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.menuHover = hover
             self?.updateExpanded()
         }
-        let hosting = NSHostingView(rootView: root)
+        let hosting = FirstMouseHostingView(rootView: root)
         hosting.frame = hitView.bounds
         hosting.autoresizingMask = [.width, .height]
         hitView.addSubview(hosting)

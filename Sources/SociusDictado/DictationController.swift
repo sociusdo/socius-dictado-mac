@@ -95,7 +95,13 @@ final class DictationController: ObservableObject {
                 if Task.isCancelled { return }
                 self.lastTranscript = text
                 if saveToHistory {
-                    self.store.add(text: text, duration: self.lastDuration, model: self.currentModel)
+                    let id = self.store.add(text: text, duration: self.lastDuration, model: self.currentModel)
+                    // Generate the AI title in the background; don't block the paste.
+                    Task { [weak self] in
+                        if let t = await TextTransformer.title(for: text) {
+                            self?.store.setTitle(id: id, t)
+                        }
+                    }
                 }
                 self.deliver(text)
             } catch {
