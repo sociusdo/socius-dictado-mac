@@ -18,6 +18,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             let hosting = NSHostingController(rootView: MainWindowView(controller: controller))
             let w = NSWindow(contentViewController: hosting)
             w.title = "Socius Dictado"
+            w.titleVisibility = .hidden        // use a centered principal title instead
             w.setContentSize(NSSize(width: 760, height: 560))
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             w.isReleasedWhenClosed = false
@@ -41,17 +42,75 @@ final class MainWindowController: NSObject, NSWindowDelegate {
 struct MainWindowView: View {
     @ObservedObject var controller: DictationController
 
+    @State private var tab = 0
+
     var body: some View {
-        TabView {
-            HistoryView()
-                .tabItem { Label("Historial", systemImage: "clock.arrow.circlepath") }
-            FilesTranscribeView()
-                .tabItem { Label("Transcribir archivos", systemImage: "waveform.badge.plus") }
-            SettingsView()
-                .tabItem { Label("Ajustes", systemImage: "gearshape") }
+        VStack(spacing: 0) {
+            SociusTabBar(selection: $tab, tabs: [
+                ("Historial", "clock.arrow.circlepath"),
+                ("Transcribir archivos", "waveform.badge.plus"),
+                ("Ajustes", "gearshape"),
+            ])
+            .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 10)
+
+            Divider().opacity(0.4)
+
+            Group {
+                switch tab {
+                case 0: HistoryView()
+                case 1: FilesTranscribeView()
+                default: SettingsView()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 680, minHeight: 500)
         .tint(Theme.purple)          // brand accent on every control + selection
+        .toolbar {
+            // Centered title on every tab (the native title shifts left when a tab
+            // adds its own toolbar actions, e.g. Historial).
+            ToolbarItem(placement: .principal) {
+                Text("Socius Dictado").font(.system(size: 13, weight: .semibold))
+            }
+        }
+    }
+}
+
+/// Custom segmented navigation — a pill bar with the active tab on the accent
+/// gradient. Replaces the generic macOS tab control so the app has its own look.
+struct SociusTabBar: View {
+    @Binding var selection: Int
+    let tabs: [(String, String)]
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(tabs.indices, id: \.self) { i in
+                let active = selection == i
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) { selection = i }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: tabs[i].1).font(.system(size: 12, weight: .semibold))
+                        Text(tabs[i].0).font(.system(size: 13, weight: active ? .semibold : .medium))
+                            .lineLimit(1).fixedSize()
+                    }
+                    .foregroundStyle(active ? Color.white : Color.secondary)
+                    .padding(.horizontal, 15).padding(.vertical, 7)
+                    .background(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(active ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Color.clear))
+                            .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(active ? Color.white.opacity(0.14) : Color.clear, lineWidth: 1))
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.06)))
+        .fixedSize()
+        .frame(maxWidth: .infinity)   // center the content-width bar
     }
 }
 
@@ -154,22 +213,32 @@ struct HistoryView: View {
     private var list: some View {
         List {
             ForEach(filtered) { item in
-                HStack(alignment: .top, spacing: 10) {
+                let selected = detailID == item.id
+                HStack(spacing: 11) {
+                    // Multi-select check
                     Image(systemName: checked.contains(item.id) ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 16))
-                        .foregroundStyle(checked.contains(item.id) ? Theme.purple : .secondary)
+                        .font(.system(size: 17))
+                        .foregroundStyle(checked.contains(item.id) ? Theme.purple : Color.secondary.opacity(0.45))
                         .contentShape(Rectangle())
                         .onTapGesture { toggleCheck(item.id) }
-                        .padding(.top, 1)
+
+                    // Accent avatar tile — the touch of brand on every row.
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Theme.accentGradient)
+                        .frame(width: 38, height: 38)
+                        .overlay(Image(systemName: "waveform")
+                            .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white))
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(.white.opacity(0.12), lineWidth: 1))
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(item.title).font(.system(size: 13, weight: .semibold)).tracking(-0.1).lineLimit(1)
+                        Text(item.title).font(.system(size: 13.5, weight: .semibold)).tracking(-0.1).lineLimit(1)
                         Text(item.text.isEmpty ? "(vacío)" : item.text)
                             .lineLimit(1).font(.system(size: 12)).foregroundStyle(.secondary)
-                        HStack(spacing: 6) {
+                        HStack(spacing: 8) {   // no «·» separators
                             Text(Self.dateFmt.string(from: item.date))
-                            Text("· \(Self.durationString(item.duration))")
-                            Text("· \(item.words) palabras")
+                            Text(Self.durationString(item.duration)).foregroundStyle(.quaternary)
+                            Text("\(item.words) palabras").foregroundStyle(.quaternary)
                         }
                         .font(.system(size: 11)).foregroundStyle(.tertiary)
                     }
@@ -177,14 +246,18 @@ struct HistoryView: View {
                     .contentShape(Rectangle())
                     .onTapGesture { detailID = item.id }
                 }
-                .padding(.vertical, 6).padding(.horizontal, 4)
-                .listRowInsets(EdgeInsets(top: 1, leading: 6, bottom: 1, trailing: 6))
-                .listRowSeparator(.hidden)
-                .listRowBackground(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(detailID == item.id ? Theme.purple.opacity(0.14) : Color.clear)
-                        .padding(.vertical, 1)
+                .padding(.vertical, 9).padding(.horizontal, 11)
+                .background(
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .fill(selected ? Theme.purple.opacity(0.10) : Color.primary.opacity(0.04))
+                        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .strokeBorder(selected ? Theme.purple.opacity(0.5) : Color.clear, lineWidth: 1))
                 )
+                .contentShape(Rectangle())
+                .onTapGesture { detailID = item.id }
+                .listRowInsets(EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
                 .contextMenu {
                     Button("Copiar") { Paster.copyToClipboard(item.text) }
                     Button(checked.contains(item.id) ? "Desmarcar" : "Marcar") { toggleCheck(item.id) }
