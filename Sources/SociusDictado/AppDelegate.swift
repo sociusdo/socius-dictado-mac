@@ -22,6 +22,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let panelSize = NSSize(width: 120, height: 210)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // One-time silent migration: if launched with SOCIUS_SEED_KEY, the APP writes
+        // the key to the Keychain so the app owns the item. An app-owned item is read
+        // back with no password prompt, ever — including after a reboot.
+        if let seed = ProcessInfo.processInfo.environment["SOCIUS_SEED_KEY"], !seed.isEmpty {
+            Keychain.set(seed)
+        }
+
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         // Bottom-right, clearly inside the visible area (above the Dock).
         let origin = NSPoint(x: screen.maxX - panelSize.width - 16,
