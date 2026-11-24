@@ -201,10 +201,14 @@ final class DictationController: ObservableObject {
     }
 
     private func presentNeedsKeyAlert() {
+        // Open the app's own Settings so the user types the key IN the app. When
+        // the app writes the Keychain item, the app owns it and reads it silently
+        // forever (no password prompt), even after a restart.
+        openMainWindow?()
         NSApp.activate(ignoringOtherApps: true)
         let a = NSAlert()
-        a.messageText = "Falta la API key de OpenAI"
-        a.informativeText = "Corre el instalador una vez para guardar tu key en el Keychain:\n\n  ~/socius-dictado/install.sh\n\nDespués vuelve a hacer clic en el micrófono."
+        a.messageText = "Agrega tu API key de OpenAI"
+        a.informativeText = "Abre la pestaña Ajustes, pega tu API key (sk-…) y dale \"Guardar key\". Se guarda en el Keychain y no te volverá a pedir permiso."
         a.alertStyle = .informational
         a.addButton(withTitle: "Entendido")
         a.runModal()

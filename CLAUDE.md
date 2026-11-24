@@ -30,8 +30,8 @@ Esto es, más o menos, **todo** lo que el estudiante debería leer en toda la in
 >
 > Avísame cuando la tengas.
 
-> Pega tu key donde te la pide y presiona Enter (no se ve al pegarla, es normal).
-> Avísame cuando esté.
+> En la app: pasa el mouse sobre el círculo → **Abrir** → pestaña **Ajustes**, pega tu key
+> y dale **Guardar key**. Avísame cuando esté.
 
 > Último paso: en **Ajustes del Sistema → Privacidad y seguridad → Accesibilidad**, activa
 > **Socius Dictado**. Avísame cuando esté.
@@ -59,16 +59,14 @@ Si se complica, sugiérele abrir esas páginas con el navegador y ayúdalo a ubi
 Requisitos: **Command Line Tools** de Xcode. Verifica `xcode-select -p`; si falla, dile que
 corra `xcode-select --install` y acepte el instalador de Apple (es gratis).
 
-Luego compila e instala (crea la firma estable, arma el `.app`, lo pone en /Applications y
-pide la API key para guardarla en el Keychain):
+Compila e instala (firma estable, arma el `.app`, lo pone en /Applications). NO pide la key:
 ```bash
 cd "<carpeta del repo>" && ./install.sh
-```
-Cuando pida la API key, que la pegue en esa terminal (no se ve al escribir; es normal).
-Abre la app:
-```bash
 open "/Applications/Socius Dictado.app"
 ```
+La key se pega DENTRO de la app (Ajustes → API key → Guardar key). Importante: que la escriba
+en la app, NO con la CLI — así la propia app es dueña del ítem del Keychain y lo lee en
+silencio para siempre (sin el popup de "permiso del Keychain", ni después de reiniciar).
 
 ## Paso 3 — Permisos (CRÍTICO, guíalo con calma)
 La primera vez que dicte, macOS pide **Accesibilidad** (para poder pegar):
@@ -94,5 +92,8 @@ contexto, pero para un estudiante basta con los 4 pasos de arriba.
 
 ## Reglas duras (no repitas errores ya resueltos)
 - No cambies a firma ad-hoc: `build.sh` usa una identidad estable para que el permiso no se caiga.
-- La API key solo al Keychain, nunca al repo ni al chat.
+- La API key solo al Keychain, nunca al repo ni al chat. **La escribe la APP (Ajustes), nunca la
+  CLI `security`** — si la siembra la CLI, macOS pide "permiso del Keychain" en cada arranque.
+- Si a alguien le sale ese popup (de una instalación vieja), que pulse **"Permitir siempre"** una
+  vez (queda para siempre), o que reescriba la key en Ajustes.
 - Verifica antes de decir "listo": que el estudiante vea el texto pegarse.

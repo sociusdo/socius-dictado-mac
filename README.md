@@ -23,9 +23,11 @@ pago por uso, cuesta centavos).
 
 ```bash
 cd socius-dictado
-./install.sh          # compila, firma, instala en /Applications y pide tu API key
+./install.sh          # compila, firma e instala en /Applications
 open "/Applications/Socius Dictado.app"
 ```
+Luego pega tu API key **dentro de la app** (pasa el mouse sobre el círculo → Abrir → Ajustes →
+pega la key → Guardar key). Entrarla en la app hace que no te pida "permiso del Keychain" nunca.
 
 **Permisos (una vez):** la primera vez que dictes, macOS pide **Accesibilidad** (para pegar).
 Actívala en *Ajustes del Sistema → Privacidad y seguridad → Accesibilidad* y **cierra y
