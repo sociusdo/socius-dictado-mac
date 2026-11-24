@@ -59,8 +59,7 @@ struct OrbView: View {
         }
         .frame(width: orbSize, height: orbSize)
         .clipShape(Circle())                       // keep the gradient strictly inside the circle
-        .overlay(Circle().strokeBorder(baseColor.adjust(brightness: 0.3).opacity(0.45), lineWidth: 0.8))
-        .shadow(color: Theme.nearBlack.opacity(0.4), radius: 12, y: 5)
+        .shadow(color: Theme.purple.opacity(0.35), radius: 6, y: 2)
         .scaleEffect(controller.state == .recording ? 1.0 + CGFloat(controller.level) * 0.16 : 1.0)
         .animation(.easeOut(duration: 0.08), value: controller.level)
         .contentShape(Circle())
