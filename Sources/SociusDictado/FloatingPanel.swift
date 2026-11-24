@@ -16,7 +16,10 @@ final class FloatingPanel: NSPanel, NSWindowDelegate {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
-        isMovableByWindowBackground = true
+        // Dragging is handled manually in HitRegionView so we can tell a tap
+        // (record) from a drag (just move). The system's background drag would
+        // swallow that distinction, so it's off.
+        isMovableByWindowBackground = false
         acceptsMouseMovedEvents = true
         hidesOnDeactivate = false
         delegate = self
@@ -83,6 +86,15 @@ final class HitRegionView: NSView {
     private let orbRadius: CGFloat = 28
     private var hoverArea: NSTrackingArea?
 
+    // Tap-vs-drag tracking. A press that moves more than `dragThreshold` points
+    // is a drag (just move the orb); a press that doesn't is a tap (record / menu).
+    private let dragThreshold: CGFloat = 4
+    private var pressMouse: NSPoint?           // global screen point at mouseDown
+    private var pressOrigin: NSPoint = .zero    // window origin at mouseDown
+    private var didDrag = false
+    private var downInOrb = false
+    private var downInMenu = false
+
     // Interactive column at the bottom-center (orb + room for the menu above it).
     private var columnRect: CGRect {
         CGRect(x: bounds.midX - 60, y: 0, width: 120, height: 112)
@@ -103,9 +115,32 @@ final class HitRegionView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
-        if inOrb(p) {
+        downInOrb = inOrb(p)
+        downInMenu = inMenu(p)
+        pressMouse = NSEvent.mouseLocation          // global, stays valid as window moves
+        pressOrigin = window?.frame.origin ?? .zero
+        didDrag = false
+        // Don't act yet — wait for mouseUp to know if this was a tap or a drag.
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let start = pressMouse, let win = window else { return }
+        let now = NSEvent.mouseLocation
+        let dx = now.x - start.x
+        let dy = now.y - start.y
+        if !didDrag && hypot(dx, dy) > dragThreshold { didDrag = true }
+        if didDrag {
+            win.setFrameOrigin(NSPoint(x: pressOrigin.x + dx, y: pressOrigin.y + dy))
+        }
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        defer { pressMouse = nil }
+        // A drag just moved the orb — never start a recording from it.
+        guard !didDrag else { return }
+        if downInOrb {
             onOrbClick()
-        } else if inMenu(p) {
+        } else if downInMenu {
             onMenuClick()
         }
     }
