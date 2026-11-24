@@ -113,14 +113,16 @@ struct HistoryView: View {
     private var list: some View {
         List(selection: $selection) {
             ForEach(filtered) { item in
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(item.text.isEmpty ? "(vacío)" : item.text).lineLimit(2).font(.system(size: 13))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                    Text(item.text.isEmpty ? "(vacío)" : item.text)
+                        .lineLimit(1).font(.system(size: 12)).foregroundStyle(.secondary)
                     HStack(spacing: 8) {
                         Text(Self.dateFmt.string(from: item.date))
                         Text("· \(Self.durationString(item.duration))")
                         Text("· \(item.words) palabras")
                     }
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .font(.system(size: 11)).foregroundStyle(.tertiary)
                 }
                 .padding(.vertical, 3)
                 .tag(item.id)
@@ -134,11 +136,11 @@ struct HistoryView: View {
 
     @ViewBuilder private var detail: some View {
         if let id = selection, let item = store.items.first(where: { $0.id == id }) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(item.title).font(.title3.weight(.semibold)).lineLimit(2)
                 HStack(spacing: 10) {
-                    Text(Self.dateFmt.string(from: item.date)).font(.headline)
-                    Spacer()
-                    Text(Self.durationString(item.duration))
+                    Text(Self.dateFmt.string(from: item.date))
+                    Text("·"); Text(Self.durationString(item.duration))
                     Text("·"); Text("\(item.words) palabras")
                     Text("·"); Text(item.model.replacingOccurrences(of: "-transcribe", with: ""))
                 }
@@ -176,7 +178,7 @@ struct HistoryView: View {
     }
 
     static let dateFmt: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "es"); f.dateFormat = "d MMM, h:mm a"; return f
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "MM/dd/yy, h:mm a"; return f
     }()
     static func durationString(_ s: TimeInterval) -> String {
         let t = Int(s.rounded()); return t >= 60 ? "\(t / 60)m \(t % 60)s" : "\(t)s"

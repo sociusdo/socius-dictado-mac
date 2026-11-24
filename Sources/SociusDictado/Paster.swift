@@ -43,6 +43,9 @@ enum Paster {
         pb.clearContents()
         pb.setString(text, forType: .string)
 
+        // Give the clipboard a beat to settle so the target app sees the new text.
+        usleep(60_000) // 60 ms
+
         guard let src = CGEventSource(stateID: .combinedSessionState) else { return false }
         let vKey: CGKeyCode = 9 // 'v'
         let down = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: true)

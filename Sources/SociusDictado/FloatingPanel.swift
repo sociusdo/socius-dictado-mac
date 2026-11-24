@@ -28,8 +28,8 @@ final class FloatingPanel: NSPanel {
 /// straight through to the app underneath — so the panel never blocks the corner.
 final class HitRegionView: NSView {
     var expanded = false
-    private let orbCenterY: CGFloat = 22   // from the bottom edge (padding 6 + orb 32/2)
-    private let orbRadius: CGFloat = 22
+    private let orbCenterY: CGFloat = 30   // from the bottom edge (padding 6 + orb 48/2)
+    private let orbRadius: CGFloat = 28
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         let p = superview.map { convert(point, from: $0) } ?? point

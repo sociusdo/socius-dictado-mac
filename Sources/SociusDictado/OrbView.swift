@@ -8,7 +8,7 @@ struct OrbView: View {
     @State private var hovering = false
     @State private var ringRotation = 0.0
 
-    private let orbSize: CGFloat = 32
+    private let orbSize: CGFloat = 48
 
     var body: some View {
         // Inner stack is sized to its content, so the hover region matches
@@ -53,13 +53,12 @@ struct OrbView: View {
             }
 
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(.white)
                 .symbolEffect(.pulse, isActive: controller.state == .recording)
         }
         .frame(width: orbSize, height: orbSize)
-        .clipShape(Circle())                       // keep the gradient strictly inside the circle
-        .shadow(color: Theme.purple.opacity(0.35), radius: 6, y: 2)
+        .clipShape(Circle())                       // only the circle — no shadow/shade outside it
         .scaleEffect(controller.state == .recording ? 1.0 + CGFloat(controller.level) * 0.16 : 1.0)
         .animation(.easeOut(duration: 0.08), value: controller.level)
         .contentShape(Circle())

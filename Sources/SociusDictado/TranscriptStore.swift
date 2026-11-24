@@ -12,6 +12,30 @@ struct TranscriptItem: Identifiable, Codable, Equatable {
     var words: Int {
         text.split { $0 == " " || $0 == "\n" }.count
     }
+
+    /// Short auto-title derived from the content (ChatGPT-style), computed so old
+    /// history gets titles too. First line/clause, trimmed to a word boundary.
+    var title: String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "(vacío)" }
+        var clause = trimmed.split(separator: "\n").first.map(String.init) ?? trimmed
+        // Prefer ending at the first sentence break if it comes reasonably early.
+        if let end = clause.firstIndex(where: { ".!?".contains($0) }) {
+            let head = String(clause[..<end])
+            if head.count >= 12 { clause = head }
+        }
+        let maxLen = 46
+        if clause.count <= maxLen { return Self.capFirst(clause) }
+        let idx = clause.index(clause.startIndex, offsetBy: maxLen)
+        var cut = String(clause[..<idx])
+        if let sp = cut.lastIndex(of: " ") { cut = String(cut[..<sp]) }
+        return Self.capFirst(cut) + "…"
+    }
+
+    private static func capFirst(_ s: String) -> String {
+        guard let first = s.first else { return s }
+        return first.uppercased() + s.dropFirst()
+    }
 }
 
 /// Persists the dictation history to Application Support/SociusDictado/history.json.

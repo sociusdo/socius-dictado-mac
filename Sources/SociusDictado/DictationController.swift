@@ -112,12 +112,11 @@ final class DictationController: ObservableObject {
         Paster.copyToClipboard(text)   // safety net: transcript is always copied
 
         guard Permissions.accessibilityTrusted() else {
-            // No Accessibility permission -> cannot paste. Copy only + nudge once.
+            // No Accessibility permission -> cannot paste. Copy only + explain once.
             flashDone(.copiedOnly)
             if !promptedAccessibility {
                 promptedAccessibility = true
-                Permissions.requestAccessibility()
-                Permissions.openAccessibilitySettings()
+                presentAccessibilityAlert()
             }
             return
         }
@@ -157,6 +156,27 @@ final class DictationController: ObservableObject {
     func importKeyFromEnv(_ key: String) {
         Keychain.set(key)
         if state == .needsKey { state = .idle }
+    }
+
+    private func presentAccessibilityAlert() {
+        Permissions.requestAccessibility()   // adds the app to the list / shows the system prompt
+        NSApp.activate(ignoringOtherApps: true)
+        let a = NSAlert()
+        a.messageText = "Falta permiso de Accesibilidad para pegar"
+        a.informativeText = """
+        Tu texto YA quedó copiado (puedes pegarlo con ⌘V). Para que se pegue solo:
+
+        1. Abre Ajustes del Sistema → Privacidad y seguridad → Accesibilidad.
+        2. Si ves una entrada vieja "Socius Dictado", quítala con el botón −.
+        3. Activa el switch de "Socius Dictado".
+        4. Vuelve a dictar: ahora se pegará donde esté el cursor.
+        """
+        a.alertStyle = .warning
+        a.addButton(withTitle: "Abrir Accesibilidad")
+        a.addButton(withTitle: "Ahora no")
+        if a.runModal() == .alertFirstButtonReturn {
+            Permissions.openAccessibilitySettings()
+        }
     }
 
     private func presentNeedsKeyAlert() {
