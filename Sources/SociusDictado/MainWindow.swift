@@ -56,7 +56,8 @@ struct MainWindowView: View {
 
 struct HistoryView: View {
     @ObservedObject private var store = TranscriptStore.shared
-    @State private var selection = Set<TranscriptItem.ID>()
+    @State private var checked = Set<UUID>()      // visible checkboxes for bulk delete
+    @State private var detailID: UUID?            // which row is shown on the right
     @State private var search = ""
 
     private var filtered: [TranscriptItem] {
@@ -72,9 +73,10 @@ struct HistoryView: View {
                 HSplitView {
                     VStack(spacing: 0) {
                         searchBar
+                        selectBar
                         list.frame(maxHeight: .infinity)
                     }
-                    .frame(minWidth: 250, idealWidth: 300, maxWidth: 380)
+                    .frame(minWidth: 280, idealWidth: 320, maxWidth: 400)
                     detail.frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
@@ -82,13 +84,13 @@ struct HistoryView: View {
         .toolbar {
             if !store.items.isEmpty {
                 ToolbarItemGroup {
-                    if !selection.isEmpty {
-                        Button(role: .destructive) { deleteSelected() } label: {
-                            Label("Borrar \(selection.count)", systemImage: "trash")
+                    if !checked.isEmpty {
+                        Button(role: .destructive) { deleteChecked() } label: {
+                            Label("Borrar \(checked.count)", systemImage: "trash")
                         }
                     }
                     Button { export() } label: { Label("Exportar", systemImage: "square.and.arrow.up") }
-                    Button(role: .destructive) { store.clearAll(); selection = [] } label: {
+                    Button(role: .destructive) { store.clearAll(); checked = []; detailID = nil } label: {
                         Label("Borrar todo", systemImage: "trash.slash")
                     }
                 }
@@ -115,43 +117,84 @@ struct HistoryView: View {
         .background(Color.gray.opacity(0.12))
     }
 
-    private var list: some View {
-        // Set selection => multi-select (⌘-click / ⇧-click). Delete key removes all.
-        List(selection: $selection) {
-            ForEach(filtered) { item in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-                    Text(item.text.isEmpty ? "(vacío)" : item.text)
-                        .lineLimit(1).font(.system(size: 12)).foregroundStyle(.secondary)
-                    HStack(spacing: 8) {
-                        Text(Self.dateFmt.string(from: item.date))
-                        Text("· \(Self.durationString(item.duration))")
-                        Text("· \(item.words) palabras")
-                    }
-                    .font(.system(size: 11)).foregroundStyle(.tertiary)
+    // Select-all / delete bar — makes multi-delete obvious.
+    private var selectBar: some View {
+        let allChecked = !filtered.isEmpty && checked.count == filtered.count
+        return HStack(spacing: 8) {
+            Image(systemName: allChecked ? "checkmark.square.fill" : "square")
+                .foregroundStyle(allChecked ? Theme.purple : .secondary)
+                .onTapGesture { allChecked ? (checked = []) : (checked = Set(filtered.map(\.id))) }
+            Text(checked.isEmpty ? "Marca para borrar varias" : "\(checked.count) marcadas")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+            Spacer()
+            if !checked.isEmpty {
+                Button(role: .destructive) { deleteChecked() } label: {
+                    Image(systemName: "trash")
                 }
-                .padding(.vertical, 3)
-                .tag(item.id)
+                .buttonStyle(.borderless)
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(Color.gray.opacity(0.06))
+    }
+
+    private var list: some View {
+        List {
+            ForEach(filtered) { item in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: checked.contains(item.id) ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 16))
+                        .foregroundStyle(checked.contains(item.id) ? Theme.purple : .secondary)
+                        .contentShape(Rectangle())
+                        .onTapGesture { toggleCheck(item.id) }
+                        .padding(.top, 1)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                        Text(item.text.isEmpty ? "(vacío)" : item.text)
+                            .lineLimit(1).font(.system(size: 12)).foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            Text(Self.dateFmt.string(from: item.date))
+                            Text("· \(Self.durationString(item.duration))")
+                            Text("· \(item.words) palabras")
+                        }
+                        .font(.system(size: 11)).foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture { detailID = item.id }
+                }
+                .padding(.vertical, 4)
+                .listRowBackground(detailID == item.id ? Color.gray.opacity(0.12) : Color.clear)
                 .contextMenu {
                     Button("Copiar") { Paster.copyToClipboard(item.text) }
-                    if selection.count > 1 && selection.contains(item.id) {
-                        Button("Borrar \(selection.count) seleccionadas", role: .destructive) { deleteSelected() }
-                    } else {
-                        Button("Borrar", role: .destructive) { store.delete(item); selection.remove(item.id) }
+                    Button(checked.contains(item.id) ? "Desmarcar" : "Marcar") { toggleCheck(item.id) }
+                    Divider()
+                    if !checked.isEmpty {
+                        Button("Borrar \(checked.count) marcadas", role: .destructive) { deleteChecked() }
                     }
+                    Button("Borrar esta", role: .destructive) { deleteOne(item) }
                 }
             }
         }
-        .onDeleteCommand { deleteSelected() }
     }
 
-    private func deleteSelected() {
-        store.delete(ids: selection)
-        selection = []
+    private func toggleCheck(_ id: UUID) {
+        if checked.contains(id) { checked.remove(id) } else { checked.insert(id) }
+    }
+    private func deleteChecked() {
+        if let d = detailID, checked.contains(d) { detailID = nil }
+        store.delete(ids: checked)
+        checked = []
+    }
+    private func deleteOne(_ item: TranscriptItem) {
+        if detailID == item.id { detailID = nil }
+        checked.remove(item.id)
+        store.delete(item)
     }
 
     @ViewBuilder private var detail: some View {
-        if selection.count == 1, let id = selection.first, let item = store.items.first(where: { $0.id == id }) {
+        if let id = detailID, let item = store.items.first(where: { $0.id == id }) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(item.title).font(.title3.weight(.semibold)).lineLimit(2)
                 HStack(spacing: 10) {
@@ -170,26 +213,19 @@ struct HistoryView: View {
                 HStack {
                     Button { Paster.copyToClipboard(item.text) } label: { Label("Copiar", systemImage: "doc.on.doc") }
                     Spacer()
-                    Button(role: .destructive) { store.delete(item); selection = [] } label: {
+                    Button(role: .destructive) { deleteOne(item) } label: {
                         Label("Borrar", systemImage: "trash")
                     }
                 }
             }
             .padding(18)
-        } else if selection.count > 1 {
-            VStack(spacing: 12) {
-                Image(systemName: "checklist").font(.system(size: 30)).foregroundStyle(Theme.purple)
-                Text("\(selection.count) seleccionadas").font(.headline)
-                Button(role: .destructive) { deleteSelected() } label: {
-                    Label("Borrar \(selection.count)", systemImage: "trash")
-                }
+        } else {
+            VStack(spacing: 8) {
+                Image(systemName: "text.cursor").font(.system(size: 26)).foregroundStyle(.secondary)
+                Text("Toca una transcripción para verla").foregroundStyle(.secondary)
+                Text("Marca las casillas para borrar varias").font(.system(size: 11)).foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            Text("Selecciona una transcripción\n(⌘-clic o ⇧-clic para varias)")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

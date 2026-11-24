@@ -10,11 +10,16 @@ struct OrbView: View {
 
     private let orbSize: CGFloat = 48
 
+    /// While recording/transcribing we keep the menu (Cancelar) pinned open — the
+    /// hover-gated version flickered and ate the tap, so Cancelar never fired.
+    private var busy: Bool {
+        controller.state == .recording || controller.state == .transcribing
+    }
+    private var showMenu: Bool { (hovering || busy) && !menuItems.isEmpty }
+
     var body: some View {
-        // Inner stack is sized to its content, so the hover region matches
-        // exactly what's visible (orb, or orb+menu) — no empty-space hover.
         VStack(spacing: 6) {
-            if hovering && !menuItems.isEmpty {
+            if showMenu {
                 menu.transition(.opacity)
             }
             orb
@@ -24,8 +29,11 @@ struct OrbView: View {
         .contentShape(Rectangle())
         .onHover { h in
             withAnimation(.easeOut(duration: 0.16)) { hovering = h }
-            onHover(h)   // lets the panel widen its click-through region
         }
+        // Expand the panel's click-through region whenever the menu is visible,
+        // so the Cancelar / Abrir taps actually land (not just while hovering).
+        .onChange(of: showMenu) { _, v in onHover(v) }
+        .onAppear { onHover(showMenu) }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 
