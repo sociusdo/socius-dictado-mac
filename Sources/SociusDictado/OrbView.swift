@@ -29,11 +29,8 @@ struct OrbView: View {
         .contentShape(Rectangle())
         .onHover { h in
             withAnimation(.easeOut(duration: 0.16)) { hovering = h }
+            onHover(h)   // report raw hover; AppDelegate OR's it with "busy"
         }
-        // Expand the panel's click-through region whenever the menu is visible,
-        // so the Cancelar / Abrir taps actually land (not just while hovering).
-        .onChange(of: showMenu) { _, v in onHover(v) }
-        .onAppear { onHover(showMenu) }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 
@@ -118,7 +115,7 @@ struct OrbView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Capsule().fill(Color.black.opacity(0.7)))
                 .contentShape(Capsule())
-                .onTapGesture { item.action() }
+                .onTapGesture { Diag.log("menu tap: \(item.label)"); item.action() }
             }
         }
         .frame(width: 112)

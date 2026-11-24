@@ -151,6 +151,7 @@ final class DictationController: ObservableObject {
     }
 
     func cancel() {
+        Diag.log("cancel() called, state=\(state), recording=\(recorder.isRecording)")
         task?.cancel()
         task = nil
         if recorder.isRecording { recorder.cancel() }

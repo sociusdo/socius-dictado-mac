@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Combine
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -7,6 +8,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hitView: HitRegionView!
     private let controller = DictationController()
     private lazy var mainWindow = MainWindowController(controller: controller)
+
+    private var cancellables = Set<AnyCancellable>()
+    private var menuHover = false
+    private var menuBusy = false
+    private func updateExpanded() { hitView?.expanded = menuHover || menuBusy }
 
     // Fixed size: orb at the bottom, room above for the hover menu.
     private let panelSize = NSSize(width: 120, height: 210)
@@ -25,8 +31,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         controller.openMainWindow = { [weak self] in self?.mainWindow.show() }
 
-        let root = OrbView(controller: controller) { [weak self] expand in
-            self?.hitView.expanded = expand   // widen click-through while menu is open
+        // The menu (Abrir / Cancelar) is clickable only when the hit region is
+        // expanded. Drive that deterministically: expanded = hovering OR busy
+        // (recording/transcribing). The old SwiftUI-only path left it false while
+        // recording, so the Cancelar tap fell through and never fired.
+        controller.$state
+            .receive(on: RunLoop.main)
+            .sink { [weak self] st in
+                MainActor.assumeIsolated {
+                    self?.menuBusy = (st == .recording || st == .transcribing)
+                    self?.updateExpanded()
+                }
+            }
+            .store(in: &cancellables)
+
+        let root = OrbView(controller: controller) { [weak self] hover in
+            self?.menuHover = hover
+            self?.updateExpanded()
         }
         let hosting = NSHostingView(rootView: root)
         hosting.frame = hitView.bounds
