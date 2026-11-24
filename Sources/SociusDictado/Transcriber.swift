@@ -115,8 +115,14 @@ final class Transcriber {
         // Language: auto-detect unless the user forced one.
         let lang = UserDefaults.standard.string(forKey: "SociusLanguage") ?? "auto"
         if lang == "es" || lang == "en" { field("language", lang) }
+        // WhatsApp voice notes are Ogg/Opus but saved as ".opus", which OpenAI
+        // rejects by extension. The bytes are a valid Ogg, so upload them under an
+        // ".ogg" name (no re-encoding) and OpenAI accepts them.
+        let uploadName = fileURL.pathExtension.lowercased() == "opus"
+            ? fileURL.deletingPathExtension().lastPathComponent + ".ogg"
+            : fileURL.lastPathComponent
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileURL.lastPathComponent)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(uploadName)\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: \(Self.mimeType(for: fileURL))\r\n\r\n".data(using: .utf8)!)
         body.append(fileData)
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
