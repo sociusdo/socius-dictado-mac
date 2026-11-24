@@ -31,15 +31,15 @@ enum Paster {
         return false
     }
 
-    /// Copies the text and pastes it at the current cursor via Cmd+V.
-    /// Requires Accessibility permission. Previous clipboard is restored after.
-    /// Returns false if Accessibility isn't granted.
+    /// Pastes the text at the current cursor via Cmd+V. The text is expected to
+    /// already be on the clipboard (deliver copies it first) and is left there,
+    /// so a manual Cmd+V still works if the synthetic one lands nowhere.
+    /// Requires Accessibility permission. Returns false if it isn't granted.
     @discardableResult
     static func pasteAtCursor(_ text: String) -> Bool {
         guard AXIsProcessTrusted() else { return false }
 
         let pb = NSPasteboard.general
-        let previous = pb.string(forType: .string)
         pb.clearContents()
         pb.setString(text, forType: .string)
 
@@ -51,14 +51,6 @@ enum Paster {
         up?.flags = .maskCommand
         down?.post(tap: .cghidEventTap)
         up?.post(tap: .cghidEventTap)
-
-        // Restore the user's previous clipboard shortly after the paste lands.
-        if let previous {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                pb.clearContents()
-                pb.setString(previous, forType: .string)
-            }
-        }
         return true
     }
 }

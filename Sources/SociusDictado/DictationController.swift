@@ -19,8 +19,19 @@ final class DictationController: ObservableObject {
 
     private let recorder = AudioRecorder()
     private let transcriber = Transcriber()
+    private let store = TranscriptStore.shared
     private var lastRecordingURL: URL?
     private var task: Task<Void, Never>?
+    private var promptedAccessibility = false
+    private var recordingStarted: Date?
+    private var lastDuration: TimeInterval = 0
+
+    /// Set by the AppDelegate so the hover "Abrir" button can open the main window.
+    var openMainWindow: (() -> Void)?
+
+    private var currentModel: String {
+        UserDefaults.standard.string(forKey: "SociusModel") ?? "gpt-4o-mini-transcribe"
+    }
 
     init() {
         recorder.onLevel = { [weak self] lvl in
@@ -51,6 +62,7 @@ final class DictationController: ObservableObject {
             }
             do {
                 try self.recorder.start()
+                self.recordingStarted = Date()
                 self.state = .recording
             } catch {
                 self.state = .error(error.localizedDescription)
@@ -61,11 +73,13 @@ final class DictationController: ObservableObject {
     private func finishRecordingAndTranscribe() {
         guard let url = recorder.stop() else { state = .idle; return }
         lastRecordingURL = url
+        lastDuration = recordingStarted.map { Date().timeIntervalSince($0) } ?? 0
+        recordingStarted = nil
         level = 0
-        runTranscription(url: url)
+        runTranscription(url: url, saveToHistory: true)
     }
 
-    private func runTranscription(url: URL) {
+    private func runTranscription(url: URL, saveToHistory: Bool) {
         state = .transcribing
         task?.cancel()
         task = Task { [weak self] in
@@ -74,6 +88,9 @@ final class DictationController: ObservableObject {
                 let text = try await self.transcriber.transcribe(url: url)
                 if Task.isCancelled { return }
                 self.lastTranscript = text
+                if saveToHistory {
+                    self.store.add(text: text, duration: self.lastDuration, model: self.currentModel)
+                }
                 self.deliver(text)
             } catch {
                 if Task.isCancelled { return }
@@ -82,15 +99,24 @@ final class DictationController: ObservableObject {
         }
     }
 
-    /// Paste at cursor if a text field is focused; otherwise leave on clipboard.
+    /// Paste at the cursor wherever it is. The transcript is always left on the
+    /// clipboard too, so even if the synthetic paste lands nowhere the user can
+    /// Cmd+V it manually (and the "Copiar" menu always works).
     private func deliver(_ text: String) {
-        if Permissions.accessibilityTrusted(), Paster.hasEditableFocus() {
-            Paster.pasteAtCursor(text)
-            flashDone(.done)
-        } else {
-            Paster.copyToClipboard(text)
+        Paster.copyToClipboard(text)   // safety net: transcript is always copied
+
+        guard Permissions.accessibilityTrusted() else {
+            // No Accessibility permission -> cannot paste. Copy only + nudge once.
             flashDone(.copiedOnly)
+            if !promptedAccessibility {
+                promptedAccessibility = true
+                Permissions.requestAccessibility()
+                Permissions.openAccessibilitySettings()
+            }
+            return
         }
+        Paster.pasteAtCursor(text)     // don't gate on fragile focus detection
+        flashDone(.done)
     }
 
     private func flashDone(_ s: DictationState) {
@@ -110,7 +136,7 @@ final class DictationController: ObservableObject {
 
     func retry() {
         guard let url = lastRecordingURL else { return }
-        runTranscription(url: url)
+        runTranscription(url: url, saveToHistory: false)
     }
 
     func cancel() {

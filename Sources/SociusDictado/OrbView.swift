@@ -8,7 +8,7 @@ struct OrbView: View {
     @State private var hovering = false
     @State private var ringRotation = 0.0
 
-    private let orbSize: CGFloat = 64
+    private let orbSize: CGFloat = 32
 
     var body: some View {
         // Inner stack is sized to its content, so the hover region matches
@@ -53,7 +53,7 @@ struct OrbView: View {
             }
 
             Image(systemName: icon)
-                .font(.system(size: 24, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white)
                 .symbolEffect(.pulse, isActive: controller.state == .recording)
         }
@@ -87,20 +87,12 @@ struct OrbView: View {
 
     private var menuItems: [MenuItem] {
         switch controller.state {
-        case .recording:
+        case .recording, .transcribing:
+            // While busy, the only action is to stop/cancel.
             return [MenuItem(label: "Cancelar", icon: "xmark", action: controller.cancel)]
-        case .transcribing:
-            return [MenuItem(label: "Cancelar", icon: "xmark", action: controller.cancel)]
-        case .done, .copiedOnly, .idle, .error:
-            var items: [MenuItem] = []
-            if !controller.lastTranscript.isEmpty {
-                items.append(MenuItem(label: "Copiar", icon: "doc.on.doc", action: controller.copy))
-                items.append(MenuItem(label: "Reintentar", icon: "arrow.clockwise", action: controller.retry))
-            }
-            items.append(MenuItem(label: "Cancelar", icon: "xmark", action: controller.cancel))
-            return items
-        case .needsKey:
-            return []
+        default:
+            // At rest (idle / done / copied / error / needs key): just open the window.
+            return [MenuItem(label: "Abrir", icon: "macwindow", action: { self.controller.openMainWindow?() })]
         }
     }
 

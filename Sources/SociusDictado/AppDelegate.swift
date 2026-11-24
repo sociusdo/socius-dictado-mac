@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: FloatingPanel!
     private var hitView: HitRegionView!
     private let controller = DictationController()
+    private lazy var mainWindow = MainWindowController(controller: controller)
 
     // Fixed size: orb at the bottom, room above for the hover menu.
     private let panelSize = NSSize(width: 120, height: 210)
@@ -20,6 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         hitView = HitRegionView(frame: NSRect(origin: .zero, size: panelSize))
         hitView.autoresizingMask = [.width, .height]
+
+        controller.openMainWindow = { [weak self] in self?.mainWindow.show() }
 
         let root = OrbView(controller: controller) { [weak self] expand in
             self?.hitView.expanded = expand   // widen click-through while menu is open
