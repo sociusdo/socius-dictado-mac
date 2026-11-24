@@ -45,6 +45,8 @@ struct MainWindowView: View {
         TabView {
             HistoryView()
                 .tabItem { Label("Historial", systemImage: "clock.arrow.circlepath") }
+            FilesTranscribeView()
+                .tabItem { Label("Transcribir archivos", systemImage: "waveform.badge.plus") }
             SettingsView()
                 .tabItem { Label("Ajustes", systemImage: "gearshape") }
         }
@@ -195,30 +197,8 @@ struct HistoryView: View {
 
     @ViewBuilder private var detail: some View {
         if let id = detailID, let item = store.items.first(where: { $0.id == id }) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(item.title).font(.title3.weight(.semibold)).lineLimit(2)
-                HStack(spacing: 10) {
-                    Text(Self.dateFmt.string(from: item.date))
-                    Text("·"); Text(Self.durationString(item.duration))
-                    Text("·"); Text("\(item.words) palabras")
-                    Text("·"); Text(item.model.replacingOccurrences(of: "-transcribe", with: ""))
-                }
-                .font(.system(size: 12)).foregroundStyle(.secondary)
-
-                ScrollView {
-                    Text(item.text).textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading).font(.system(size: 14))
-                }
-
-                HStack {
-                    Button { Paster.copyToClipboard(item.text) } label: { Label("Copiar", systemImage: "doc.on.doc") }
-                    Spacer()
-                    Button(role: .destructive) { deleteOne(item) } label: {
-                        Label("Borrar", systemImage: "trash")
-                    }
-                }
-            }
-            .padding(18)
+            TranscriptDetailView(item: item, onDelete: { deleteOne(item) })
+                .id(id)
         } else {
             VStack(spacing: 8) {
                 Image(systemName: "text.cursor").font(.system(size: 26)).foregroundStyle(.secondary)

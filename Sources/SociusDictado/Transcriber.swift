@@ -117,7 +117,7 @@ final class Transcriber {
         if lang == "es" || lang == "en" { field("language", lang) }
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileURL.lastPathComponent)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(Self.mimeType(for: fileURL))\r\n\r\n".data(using: .utf8)!)
         body.append(fileData)
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
         req.httpBody = body
@@ -133,6 +133,23 @@ final class Transcriber {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw TranscriberError.emptyResult }
         return text
+    }
+
+    // OpenAI keys the format off the filename extension, but send a matching
+    // content-type too so dropped mp3 / wav / etc. are accepted as-is.
+    static func mimeType(for url: URL) -> String {
+        switch url.pathExtension.lowercased() {
+        case "mp3", "mpga", "mpeg", "mpg": return "audio/mpeg"
+        case "wav":                        return "audio/wav"
+        case "flac":                       return "audio/flac"
+        case "ogg", "oga", "opus":         return "audio/ogg"
+        case "webm":                       return "audio/webm"
+        case "mov":                        return "video/quicktime"
+        case "aiff", "aif", "caf":         return "audio/aiff"
+        case "amr":                        return "audio/amr"
+        case "3gp":                        return "audio/3gpp"
+        default:                           return "audio/m4a"   // m4a, m4b, mp4
+        }
     }
 
     // MARK: - Splitting (native, no ffmpeg dependency)

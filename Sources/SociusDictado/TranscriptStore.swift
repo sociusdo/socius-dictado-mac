@@ -1,6 +1,14 @@
 import Foundation
 import Combine
 
+/// A saved snapshot of a transcript's text at a point in time (Google-Docs-style
+/// version history). The newest snapshot always matches the item's current text.
+struct TranscriptVersion: Codable, Equatable, Identifiable {
+    var id = UUID()
+    let date: Date
+    let text: String
+}
+
 /// One saved dictation.
 struct TranscriptItem: Identifiable, Codable, Equatable {
     let id: UUID
@@ -9,9 +17,17 @@ struct TranscriptItem: Identifiable, Codable, Equatable {
     let model: String
     var text: String
     var aiTitle: String?         // short AI summary; filled in shortly after saving
+    var versions: [TranscriptVersion]?   // edit history; nil for items saved before versioning
 
     var words: Int {
         text.split { $0 == " " || $0 == "\n" }.count
+    }
+
+    /// Version timeline, oldest→newest. Synthesizes a single version from the
+    /// current text for old items that predate versioning.
+    var versionList: [TranscriptVersion] {
+        if let v = versions, !v.isEmpty { return v }
+        return [TranscriptVersion(id: id, date: date, text: text)]
     }
 
     /// What the UI shows: the AI summary when ready, else a first-line fallback.
@@ -75,7 +91,10 @@ final class TranscriptStore: ObservableObject {
 
     @discardableResult
     func add(text: String, duration: TimeInterval, model: String) -> UUID {
-        let item = TranscriptItem(id: UUID(), date: Date(), duration: duration, model: model, text: text, aiTitle: nil)
+        let now = Date()
+        let item = TranscriptItem(id: UUID(), date: now, duration: duration, model: model,
+                                  text: text, aiTitle: nil,
+                                  versions: [TranscriptVersion(date: now, text: text)])
         items.insert(item, at: 0)   // newest first
         save()
         return item.id
@@ -84,6 +103,43 @@ final class TranscriptStore: ObservableObject {
     func setTitle(id: UUID, _ title: String) {
         guard let i = items.firstIndex(where: { $0.id == id }) else { return }
         items[i].aiTitle = title
+        save()
+    }
+
+    // MARK: - Editing + version history
+
+    /// Live edit: update the current text (no new version). Called as the user types.
+    func updateText(id: UUID, _ newText: String) {
+        guard let i = items.firstIndex(where: { $0.id == id }), items[i].text != newText else { return }
+        items[i].text = newText
+        save()
+    }
+
+    /// Snapshot the current text as a new version if it differs from the latest one.
+    /// Called when the user finishes an edit (loses focus, leaves the row, or saves).
+    func snapshotVersion(id: UUID) {
+        guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        var vs = items[i].versionList
+        let current = items[i].text
+        if vs.last?.text != current {
+            vs.append(TranscriptVersion(date: Date(), text: current))
+            items[i].versions = vs
+            save()
+        } else if items[i].versions == nil {
+            items[i].versions = vs   // persist the synthesized baseline for old items
+            save()
+        }
+    }
+
+    /// Restore a previous version: set it as current and record the restore as a new version.
+    func restore(id: UUID, to version: TranscriptVersion) {
+        guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        var vs = items[i].versionList
+        items[i].text = version.text
+        if vs.last?.text != version.text {
+            vs.append(TranscriptVersion(date: Date(), text: version.text))
+        }
+        items[i].versions = vs
         save()
     }
 
