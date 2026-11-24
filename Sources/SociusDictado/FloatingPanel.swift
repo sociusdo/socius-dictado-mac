@@ -70,20 +70,58 @@ final class FloatingPanel: NSPanel, NSWindowDelegate {
 /// Content view that only "catches" the mouse over the visible orb (idle) or
 /// the whole column (while the hover menu is open). Everywhere else clicks pass
 /// straight through to the app underneath — so the panel never blocks the corner.
+/// Owns ALL mouse handling for the orb + hover menu. SwiftUI only draws; clicks
+/// are dispatched here in AppKit, because SwiftUI tap gestures never fired in this
+/// borderless, non-activating panel. Hover is detected with a tracking area.
 final class HitRegionView: NSView {
-    var expanded = false
-    private let orbCenterY: CGFloat = 30   // from the bottom edge (padding 6 + orb 48/2)
+    var isMenuOpen: () -> Bool = { false }     // hovering OR recording/transcribing
+    var onOrbClick: () -> Void = {}
+    var onMenuClick: () -> Void = {}
+    var onHoverChange: (Bool) -> Void = { _ in }
+
+    private let orbCenterY: CGFloat = 30       // from the bottom edge (padding 6 + orb 48/2)
     private let orbRadius: CGFloat = 28
+    private var hoverArea: NSTrackingArea?
+
+    // Interactive column at the bottom-center (orb + room for the menu above it).
+    private var columnRect: CGRect {
+        CGRect(x: bounds.midX - 60, y: 0, width: 120, height: 112)
+    }
+    private func inOrb(_ p: CGPoint) -> Bool {
+        hypot(p.x - bounds.midX, p.y - orbCenterY) <= orbRadius
+    }
+    private func inMenu(_ p: CGPoint) -> Bool {
+        isMenuOpen() && columnRect.contains(p) && p.y > orbCenterY + orbRadius
+    }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         let p = superview.map { convert(point, from: $0) } ?? point
-        if expanded {
-            return bounds.contains(p) ? super.hitTest(point) : nil
-        }
-        let center = CGPoint(x: bounds.midX, y: orbCenterY)
-        return hypot(p.x - center.x, p.y - center.y) <= orbRadius ? super.hitTest(point) : nil
+        // Return self (not the SwiftUI subview) so WE get mouseDown. Everywhere
+        // else returns nil so clicks pass through to the app underneath.
+        return (inOrb(p) || inMenu(p)) ? self : nil
     }
 
-    // Allow clicking the orb even when the app isn't active (non-activating panel).
+    override func mouseDown(with event: NSEvent) {
+        let p = convert(event.locationInWindow, from: nil)
+        if inOrb(p) {
+            onOrbClick()
+        } else if inMenu(p) {
+            onMenuClick()
+        }
+    }
+
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    // Hover detection for revealing the menu at rest.
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let a = hoverArea { removeTrackingArea(a) }
+        let a = NSTrackingArea(rect: columnRect,
+                               options: [.activeAlways, .mouseEnteredAndExited, .enabledDuringMouseDrag],
+                               owner: self, userInfo: nil)
+        addTrackingArea(a)
+        hoverArea = a
+    }
+    override func mouseEntered(with event: NSEvent) { onHoverChange(true) }
+    override func mouseExited(with event: NSEvent) { onHoverChange(false) }
 }

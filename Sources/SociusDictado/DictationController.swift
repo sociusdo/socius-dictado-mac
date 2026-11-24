@@ -16,6 +16,15 @@ final class DictationController: ObservableObject {
     @Published var state: DictationState = .idle
     @Published var level: Float = 0           // 0...1 mic level for animation
     @Published var lastTranscript: String = ""
+    @Published var hovering: Bool = false     // pointer over the orb/menu column
+
+    /// The single hover-menu action: cancel while busy, otherwise open the window.
+    func menuAction() {
+        switch state {
+        case .recording, .transcribing: cancel()
+        default: openMainWindow?()
+        }
+    }
 
     private let recorder = AudioRecorder()
     private let transcriber = Transcriber()
@@ -157,7 +166,6 @@ final class DictationController: ObservableObject {
     }
 
     func cancel() {
-        Diag.log("cancel() called, state=\(state), recording=\(recorder.isRecording)")
         task?.cancel()
         task = nil
         if recorder.isRecording { recorder.cancel() }

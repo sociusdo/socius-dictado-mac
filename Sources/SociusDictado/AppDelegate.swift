@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import Combine
 
 /// NSHostingView that accepts the first click in a non-activating (background)
 /// window. Without this, the panel never becomes key, so SwiftUI's first click on
@@ -19,11 +18,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let controller = DictationController()
     private lazy var mainWindow = MainWindowController(controller: controller)
 
-    private var cancellables = Set<AnyCancellable>()
-    private var menuHover = false
-    private var menuBusy = false
-    private func updateExpanded() { hitView?.expanded = menuHover || menuBusy }
-
     // Fixed size: orb at the bottom, room above for the hover menu.
     private let panelSize = NSSize(width: 120, height: 210)
 
@@ -38,27 +32,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         hitView = HitRegionView(frame: NSRect(origin: .zero, size: panelSize))
         hitView.autoresizingMask = [.width, .height]
+        // All clicks handled in AppKit (SwiftUI taps never fired in this panel).
+        hitView.isMenuOpen = { [weak self] in
+            guard let self else { return false }
+            return self.controller.hovering
+                || self.controller.state == .recording
+                || self.controller.state == .transcribing
+        }
+        hitView.onOrbClick = { [weak self] in self?.controller.primaryTap() }
+        hitView.onMenuClick = { [weak self] in self?.controller.menuAction() }
+        hitView.onHoverChange = { [weak self] h in self?.controller.hovering = h }
 
         controller.openMainWindow = { [weak self] in self?.mainWindow.show() }
 
-        // The menu (Abrir / Cancelar) is clickable only when the hit region is
-        // expanded. Drive that deterministically: expanded = hovering OR busy
-        // (recording/transcribing). The old SwiftUI-only path left it false while
-        // recording, so the Cancelar tap fell through and never fired.
-        controller.$state
-            .receive(on: RunLoop.main)
-            .sink { [weak self] st in
-                MainActor.assumeIsolated {
-                    self?.menuBusy = (st == .recording || st == .transcribing)
-                    self?.updateExpanded()
-                }
-            }
-            .store(in: &cancellables)
-
-        let root = OrbView(controller: controller) { [weak self] hover in
-            self?.menuHover = hover
-            self?.updateExpanded()
-        }
+        let root = OrbView(controller: controller)
         let hosting = FirstMouseHostingView(rootView: root)
         hosting.frame = hitView.bounds
         hosting.autoresizingMask = [.width, .height]

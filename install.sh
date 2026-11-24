@@ -25,7 +25,8 @@ else
   [ -n "$KEY" ] || { echo "No se dio ninguna key. Abortando."; exit 1; }
   # -T autoriza a la app a leerla sin preguntar; si macOS igual pregunta,
   # haz clic en "Permitir siempre" una vez.
-  security add-generic-password -U -s "$SERVICE" -a "$ACCOUNT" -w "$KEY" -T "$APP_PATH" -T /usr/bin/security
+  security add-generic-password -U -s "$SERVICE" -a "$ACCOUNT" -w "$KEY" \
+    -T "$APP_PATH" -T "/Applications/$APP" -T /usr/bin/security
   echo "🔑 API key guardada en el Keychain."
 fi
 

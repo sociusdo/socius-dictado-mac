@@ -2,20 +2,17 @@ import SwiftUI
 
 struct OrbView: View {
     @ObservedObject var controller: DictationController
-    /// Lets the window grow (menu) / shrink as the pointer enters & leaves.
-    var onHover: (Bool) -> Void
 
-    @State private var hovering = false
     @State private var ringRotation = 0.0
 
     private let orbSize: CGFloat = 48
 
-    /// While recording/transcribing we keep the menu (Cancelar) pinned open — the
-    /// hover-gated version flickered and ate the tap, so Cancelar never fired.
     private var busy: Bool {
         controller.state == .recording || controller.state == .transcribing
     }
-    private var showMenu: Bool { (hovering || busy) && !menuItems.isEmpty }
+    // Hover state comes from AppKit (controller.hovering); clicks are handled in
+    // AppKit too. SwiftUI here only draws.
+    private var showMenu: Bool { (controller.hovering || busy) && !menuItems.isEmpty }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -26,12 +23,8 @@ struct OrbView: View {
         }
         .padding(6)
         .fixedSize()
-        .contentShape(Rectangle())
-        .onHover { h in
-            withAnimation(.easeOut(duration: 0.16)) { hovering = h }
-            onHover(h)   // report raw hover; AppDelegate OR's it with "busy"
-        }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .animation(.easeOut(duration: 0.16), value: showMenu)
     }
 
     // MARK: Orb
@@ -66,8 +59,6 @@ struct OrbView: View {
         .clipShape(Circle())                       // only the circle — no shadow/shade outside it
         .scaleEffect(controller.state == .recording ? 1.0 + CGFloat(controller.level) * 0.16 : 1.0)
         .animation(.easeOut(duration: 0.08), value: controller.level)
-        .contentShape(Circle())
-        .onTapGesture { controller.primaryTap() }
         .onAppear { startRingIfNeeded() }
         .onChange(of: controller.state) { startRingIfNeeded() }
     }
@@ -114,8 +105,9 @@ struct OrbView: View {
                 .padding(.horizontal, 10).padding(.vertical, 6)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Capsule().fill(Color.black.opacity(0.7)))
+                // Clicks are handled in AppKit (HitRegionView.onMenuClick); this is
+                // visual only.
                 .contentShape(Capsule())
-                .onTapGesture { Diag.log("menu tap: \(item.label)"); item.action() }
             }
         }
         .frame(width: 112)
