@@ -21,6 +21,34 @@ final class FloatingPanel: NSPanel {
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+
+    // Keep the visible orb fully on screen while dragging. The orb sits at a
+    // fixed spot inside this (taller, mostly transparent) panel, so we clamp the
+    // window origin by the ORB's rect — not the whole window — otherwise the empty
+    // area above the orb counts as "on screen" and the orb slips off the bottom.
+    private let orbCenterYFromBottom: CGFloat = 30
+    private let orbRadius: CGFloat = 26
+
+    override func setFrameOrigin(_ point: NSPoint) {
+        super.setFrameOrigin(clampedOrigin(point))
+    }
+
+    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
+        var r = frameRect
+        r.origin = clampedOrigin(frameRect.origin)
+        super.setFrame(r, display: flag)
+    }
+
+    private func clampedOrigin(_ p: NSPoint) -> NSPoint {
+        guard let vf = (screen ?? NSScreen.main)?.visibleFrame else { return p }
+        let cx = frame.width / 2
+        let minX = vf.minX - (cx - orbRadius)
+        let maxX = vf.maxX - (cx + orbRadius)
+        let minY = vf.minY - (orbCenterYFromBottom - orbRadius)
+        let maxY = vf.maxY - (orbCenterYFromBottom + orbRadius)
+        return NSPoint(x: min(max(p.x, minX), maxX),
+                       y: min(max(p.y, minY), maxY))
+    }
 }
 
 /// Content view that only "catches" the mouse over the visible orb (idle) or
