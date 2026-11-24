@@ -63,6 +63,7 @@ final class DictationController: ObservableObject {
             do {
                 try self.recorder.start()
                 self.recordingStarted = Date()
+                self.playSound("Tink")
                 self.state = .recording
             } catch {
                 self.state = .error(error.localizedDescription)
@@ -76,6 +77,7 @@ final class DictationController: ObservableObject {
         lastDuration = recordingStarted.map { Date().timeIntervalSince($0) } ?? 0
         recordingStarted = nil
         level = 0
+        playSound("Pop")
         runTranscription(url: url, saveToHistory: true)
     }
 
@@ -85,7 +87,11 @@ final class DictationController: ObservableObject {
         task = Task { [weak self] in
             guard let self else { return }
             do {
-                let text = try await self.transcriber.transcribe(url: url)
+                let raw = try await self.transcriber.transcribe(url: url)
+                if Task.isCancelled { return }
+                // Optional AI post-processing (clean / bullets / email / translate).
+                let mode = AIMode(rawValue: UserDefaults.standard.string(forKey: "SociusAIMode") ?? "none") ?? .none
+                let text = await TextTransformer.apply(mode, to: raw)
                 if Task.isCancelled { return }
                 self.lastTranscript = text
                 if saveToHistory {
@@ -166,5 +172,10 @@ final class DictationController: ObservableObject {
     private func short(_ error: Error) -> String {
         let m = error.localizedDescription
         return String(m.prefix(80))
+    }
+
+    private func playSound(_ name: String) {
+        guard UserDefaults.standard.object(forKey: "SociusSound") as? Bool ?? true else { return }
+        NSSound(named: NSSound.Name(name))?.play()
     }
 }

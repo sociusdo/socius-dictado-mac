@@ -62,5 +62,14 @@ else
   codesign --force --deep --sign - "$APP"
 fi
 
+# Install into /Applications so Luis can launch it from Launchpad/Spotlight even
+# after quitting. Same signature => the Accessibility grant carries over.
+DEST="/Applications/$APP"
+if rm -rf "$DEST" 2>/dev/null && ditto "$APP" "$DEST" 2>/dev/null; then
+  echo "==> Instalada en /Applications"
+else
+  echo "==> No pude copiar a /Applications (permisos). Se queda en $(pwd)."
+fi
+
 echo "✅ Listo: $(pwd)/$APP"
-echo "   Ábrela con:  open \"$(pwd)/$APP\""
+echo "   Ábrela con:  open \"$DEST\"  (o desde Launchpad)"

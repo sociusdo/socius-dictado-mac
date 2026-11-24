@@ -100,7 +100,21 @@ final class Transcriber {
             body.append("\(value)\r\n".data(using: .utf8)!)
         }
         field("model", model)
-        field("response_format", "text")   // no `language` => auto-detect
+        field("response_format", "text")
+
+        // Personal dictionary: bias recognition toward the user's terms (names,
+        // brands like Kommo / Socius / Auto Lujosa) via the transcription prompt.
+        let dict = (UserDefaults.standard.string(forKey: "SociusDictionary") ?? "")
+            .split(whereSeparator: { $0 == "\n" || $0 == "," })
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        if !dict.isEmpty {
+            field("prompt", "Términos y nombres propios: " + dict.joined(separator: ", "))
+        }
+
+        // Language: auto-detect unless the user forced one.
+        let lang = UserDefaults.standard.string(forKey: "SociusLanguage") ?? "auto"
+        if lang == "es" || lang == "en" { field("language", lang) }
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileURL.lastPathComponent)\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)

@@ -13,8 +13,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let origin = NSPoint(x: screen.maxX - panelSize.width - 12,
-                             y: screen.minY + 70)
+        // Bottom-right, clearly inside the visible area (above the Dock).
+        let origin = NSPoint(x: screen.maxX - panelSize.width - 16,
+                             y: screen.minY + 24)
         let rect = NSRect(origin: origin, size: panelSize)
 
         panel = FloatingPanel(contentRect: rect)
@@ -35,6 +36,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.contentView = hitView
         panel.orderFrontRegardless()
 
+        setupMenu()
+
+        // Global shortcuts: ⌘⇧D show/hide, ⌘⇧Space start/stop dictation.
+        HotKeyManager.shared.reload(
+            visibility: { [weak self] in self?.toggleVisibility() },
+            dictation:  { [weak self] in self?.controller.primaryTap() })
+
         // Ask for Accessibility up front (needed to paste). Non-blocking prompt.
         if !Permissions.accessibilityTrusted() {
             Permissions.requestAccessibility()
@@ -42,4 +50,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    // MARK: Actions used by hotkeys / menu
+
+    func toggleVisibility() {
+        if panel.isVisible { panel.orderOut(nil) }
+        else { panel.orderFrontRegardless() }
+    }
+
+    @objc func openWindowAction() { mainWindow.show() }
+    @objc func showOrbAction() { panel.orderFrontRegardless() }
+
+    /// Minimal menu so ⌘Q / ⌘W behave and there's a discoverable Quit + Open.
+    private func setupMenu() {
+        let main = NSMenu()
+
+        let appItem = NSMenuItem()
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "Abrir Socius Dictado", action: #selector(openWindowAction), keyEquivalent: "o")
+        appMenu.addItem(withTitle: "Mostrar el círculo", action: #selector(showOrbAction), keyEquivalent: "")
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Salir de Socius Dictado", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appItem.submenu = appMenu
+        main.addItem(appItem)
+
+        // Standard Edit menu so Cmd+C/V/X/A work inside the window.
+        let editItem = NSMenuItem()
+        let edit = NSMenu(title: "Edición")
+        edit.addItem(withTitle: "Cortar", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copiar", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Pegar", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Seleccionar todo", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = edit
+        main.addItem(editItem)
+
+        NSApp.mainMenu = main
+    }
 }
