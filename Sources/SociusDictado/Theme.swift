@@ -8,7 +8,7 @@ enum Theme {
     /// Elegant default Socius purple. Luis can confirm the exact brand hex;
     /// override at runtime without rebuilding via:
     ///   defaults write com.socius.dictado SociusPurpleHex "#5B21B6"
-    static let defaultPurpleHex = "#6D28D9"
+    static let defaultPurpleHex = "#6D4AFF"   // premium periwinkle-violet (Socius family)
 
     static var purpleHex: String {
         UserDefaults.standard.string(forKey: "SociusPurpleHex") ?? defaultPurpleHex
@@ -16,6 +16,12 @@ enum Theme {
 
     static var purple: Color { Color(hex: purpleHex) ?? Color(hex: defaultPurpleHex)! }
     static var purpleDark: Color { purple.opacity(0.85) }
+
+    /// A soft top→bottom accent gradient for primary buttons and highlights.
+    static var accentGradient: LinearGradient {
+        LinearGradient(colors: [purple.adjust(brightness: 0.10), purple.adjust(brightness: -0.08)],
+                       startPoint: .top, endPoint: .bottom)
+    }
 
     static let recording = Color(hex: "#EF4444")!   // red while recording
     static let success   = Color(hex: "#22C55E")!   // green ~1s when pasted

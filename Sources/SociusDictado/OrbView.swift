@@ -71,19 +71,21 @@ struct OrbView: View {
             markBG
             if let mark = Brand.mark {
                 Image(nsImage: mark).resizable().interpolation(.high).scaledToFit()
-                    .frame(width: orbSize * 0.5, height: orbSize * 0.5)
+                    .frame(width: orbSize * 0.75, height: orbSize * 0.75)
             }
         }
         .frame(width: orbSize, height: orbSize)
         .clipShape(Circle())
         .overlay(
             // A faint top-light rim so the orb reads as a physical object.
+            // INSIDE the circle only — the panel is transparent, so any shadow or
+            // stroke outside the orb would smear onto the desktop. Never add an
+            // outer .shadow here.
             Circle().strokeBorder(
                 LinearGradient(colors: [.white.opacity(0.28), .white.opacity(0.03)],
                                startPoint: .top, endPoint: .bottom),
                 lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.32), radius: 6, y: 2)
     }
 
     private var scale: CGFloat {
@@ -126,7 +128,6 @@ struct OrbView: View {
                 .frame(width: 17, height: 17)
                 .background(Circle().fill(color))
                 .overlay(Circle().strokeBorder(.white.opacity(0.9), lineWidth: 1.5))
-                .shadow(color: .black.opacity(0.3), radius: 1.5, y: 0.5)
                 .offset(x: 3, y: 3)
                 .transition(.scale.combined(with: .opacity))
         }
@@ -169,10 +170,9 @@ struct OrbView: View {
                 .padding(.horizontal, 12).padding(.vertical, 7)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    Capsule().fill(.black.opacity(0.78))
-                        .overlay(Capsule().strokeBorder(.white.opacity(0.08), lineWidth: 1))
+                    Capsule().fill(.black.opacity(0.82))
+                        .overlay(Capsule().strokeBorder(.white.opacity(0.1), lineWidth: 1))
                 )
-                .shadow(color: .black.opacity(0.25), radius: 5, y: 2)
                 .contentShape(Capsule())
             }
         }

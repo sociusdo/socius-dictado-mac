@@ -54,13 +54,16 @@ struct TranscriptDetailView: View {
 
             HStack(spacing: 10) {
                 Button { Paster.copyToClipboard(text) } label: { Label("Copiar", systemImage: "doc.on.doc") }
+                    .buttonStyle(.sociusPrimary)
                 Button { editing = false; store.snapshotVersion(id: item.id) } label: {
                     Label("Guardar versión", systemImage: "square.and.arrow.down")
                 }
+                .buttonStyle(.sociusSecondary)
                 Text("Se guarda solo mientras escribes").font(.system(size: 11)).foregroundStyle(.tertiary)
                 Spacer()
                 if let onDelete {
                     Button(role: .destructive, action: onDelete) { Label("Borrar", systemImage: "trash") }
+                        .buttonStyle(.borderless).foregroundStyle(.red)
                 }
             }
         }
@@ -130,6 +133,7 @@ struct VersionHistoryView: View {
                         }
                         HStack {
                             Button { Paster.copyToClipboard(v.text) } label: { Label("Copiar", systemImage: "doc.on.doc") }
+                                .buttonStyle(.sociusSecondary)
                             Spacer()
                             if v.id != versions.first?.id {
                                 Button {
@@ -137,7 +141,7 @@ struct VersionHistoryView: View {
                                     onRestore(v.text)
                                     dismiss()
                                 } label: { Label("Restaurar esta versión", systemImage: "arrow.uturn.backward") }
-                                .buttonStyle(.borderedProminent)
+                                .buttonStyle(.sociusPrimary)
                             } else {
                                 Text("Versión actual").font(.system(size: 11)).foregroundStyle(.tertiary)
                             }

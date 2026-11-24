@@ -177,11 +177,13 @@ struct HistoryView: View {
                     .contentShape(Rectangle())
                     .onTapGesture { detailID = item.id }
                 }
-                .padding(.vertical, 5).padding(.horizontal, 4)
+                .padding(.vertical, 6).padding(.horizontal, 4)
                 .listRowInsets(EdgeInsets(top: 1, leading: 6, bottom: 1, trailing: 6))
+                .listRowSeparator(.hidden)
                 .listRowBackground(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(detailID == item.id ? Theme.purple.opacity(0.14) : Color.clear)
+                        .padding(.vertical, 1)
                 )
                 .contextMenu {
                     Button("Copiar") { Paster.copyToClipboard(item.text) }
@@ -312,6 +314,7 @@ struct SettingsView: View {
                         guard !k.isEmpty else { return }
                         Keychain.set(k); apiKeyField = ""; keyStatus = "Guardada ✓"
                     }
+                    .buttonStyle(.sociusSecondary)
                     .disabled(apiKeyField.isEmpty)
                     if !keyStatus.isEmpty { Text(keyStatus).font(.system(size: 11)).foregroundStyle(.secondary) }
                 }

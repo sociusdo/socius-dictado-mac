@@ -79,6 +79,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
+    // Re-launching the app (Finder / Launchpad / `open`) opens the main window —
+    // the orb is always there, so this gives a discoverable way back to the UI.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        mainWindow.show()
+        return true
+    }
+
     // MARK: Actions used by hotkeys / menu
 
     func toggleVisibility() {

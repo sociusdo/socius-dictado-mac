@@ -106,7 +106,7 @@ struct FilesTranscribeView: View {
             Text("Arrastra aquí tus audios").font(.headline)
             Text("Uno o varios a la vez. Se transcriben en el orden que los sueltes y se unen en una sola transcripción.")
                 .font(.system(size: 12)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Button("Elegir archivos…") { pick() }.buttonStyle(.bordered)
+            Button("Elegir archivos…") { pick() }.buttonStyle(.sociusSecondary)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 22).padding(.horizontal, 16)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(targeted ? 0.18 : 0.07)))
@@ -145,10 +145,12 @@ struct FilesTranscribeView: View {
                 Label(model.running ? "Transcribiendo…" : "Transcribir" + (model.files.isEmpty ? "" : " (\(model.files.count))"),
                       systemImage: "waveform")
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.sociusPrimary)
             .disabled(model.files.isEmpty || model.running)
+            .opacity(model.files.isEmpty || model.running ? 0.5 : 1)
 
             Button("Limpiar") { model.clear() }
+                .buttonStyle(.sociusSecondary)
                 .disabled(model.running || (model.files.isEmpty && model.savedID == nil))
             Spacer()
         }
