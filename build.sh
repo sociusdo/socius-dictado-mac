@@ -54,6 +54,12 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BUILT" "$APP/Contents/MacOS/$BIN"
 cp Info.plist "$APP/Contents/Info.plist"
 [ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns" || true
+# The Socius mark (the Ü) shown inside the floating orb — loaded via Bundle.main.
+[ -f Resources/AppIcon-source.png ] && cp Resources/AppIcon-source.png "$APP/Contents/Resources/SociusMark.png" || true
+
+# Strip extended attributes (quarantine / resource forks the assets may carry from
+# Downloads). codesign refuses to sign a bundle with "detritus" xattrs.
+xattr -cr "$APP" 2>/dev/null || true
 
 if ensure_identity && codesign --force --deep --sign "$IDENTITY" "$APP" 2>/dev/null; then
   echo "==> Firmado con identidad estable: $IDENTITY"

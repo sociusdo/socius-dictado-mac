@@ -51,6 +51,7 @@ struct MainWindowView: View {
                 .tabItem { Label("Ajustes", systemImage: "gearshape") }
         }
         .frame(minWidth: 680, minHeight: 500)
+        .tint(Theme.purple)          // brand accent on every control + selection
     }
 }
 
@@ -101,22 +102,32 @@ struct HistoryView: View {
     }
 
     private var empty: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "waveform").font(.system(size: 34, weight: .light)).foregroundStyle(Theme.purple)
-            Text("Aún no hay transcripciones").font(.headline)
+        VStack(spacing: 12) {
+            ZStack {
+                Circle().fill(Theme.purple.opacity(0.12)).frame(width: 76, height: 76)
+                Image(systemName: "waveform").font(.system(size: 30, weight: .regular)).foregroundStyle(Theme.purple)
+            }
+            Text("Aún no hay transcripciones")
+                .font(.system(size: 17, weight: .semibold)).tracking(-0.2)
             Text("Dicta con el círculo (o ⌘⇧Espacio) y aparecerán aquí.")
-                .font(.subheadline).foregroundStyle(.secondary)
+                .font(.system(size: 13)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var searchBar: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("Buscar", text: $search).textFieldStyle(.plain)
+        HStack(spacing: 7) {
+            Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(.secondary)
+            TextField("Buscar", text: $search).textFieldStyle(.plain).font(.system(size: 13))
+            if !search.isEmpty {
+                Button { search = "" } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                }.buttonStyle(.borderless)
+            }
         }
-        .padding(8)
-        .background(Color.gray.opacity(0.12))
+        .padding(.horizontal, 10).padding(.vertical, 7)
+        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.quaternary.opacity(0.6)))
+        .padding(10)
     }
 
     // Select-all / delete bar — makes multi-delete obvious.
@@ -151,11 +162,11 @@ struct HistoryView: View {
                         .onTapGesture { toggleCheck(item.id) }
                         .padding(.top, 1)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(item.title).font(.system(size: 13, weight: .semibold)).tracking(-0.1).lineLimit(1)
                         Text(item.text.isEmpty ? "(vacío)" : item.text)
                             .lineLimit(1).font(.system(size: 12)).foregroundStyle(.secondary)
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             Text(Self.dateFmt.string(from: item.date))
                             Text("· \(Self.durationString(item.duration))")
                             Text("· \(item.words) palabras")
@@ -166,8 +177,12 @@ struct HistoryView: View {
                     .contentShape(Rectangle())
                     .onTapGesture { detailID = item.id }
                 }
-                .padding(.vertical, 4)
-                .listRowBackground(detailID == item.id ? Color.gray.opacity(0.12) : Color.clear)
+                .padding(.vertical, 5).padding(.horizontal, 4)
+                .listRowInsets(EdgeInsets(top: 1, leading: 6, bottom: 1, trailing: 6))
+                .listRowBackground(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(detailID == item.id ? Theme.purple.opacity(0.14) : Color.clear)
+                )
                 .contextMenu {
                     Button("Copiar") { Paster.copyToClipboard(item.text) }
                     Button(checked.contains(item.id) ? "Desmarcar" : "Marcar") { toggleCheck(item.id) }
@@ -179,6 +194,8 @@ struct HistoryView: View {
                 }
             }
         }
+        .listStyle(.inset)
+        .scrollContentBackground(.hidden)
     }
 
     private func toggleCheck(_ id: UUID) {
@@ -200,10 +217,14 @@ struct HistoryView: View {
             TranscriptDetailView(item: item, onDelete: { deleteOne(item) })
                 .id(id)
         } else {
-            VStack(spacing: 8) {
-                Image(systemName: "text.cursor").font(.system(size: 26)).foregroundStyle(.secondary)
-                Text("Toca una transcripción para verla").foregroundStyle(.secondary)
-                Text("Marca las casillas para borrar varias").font(.system(size: 11)).foregroundStyle(.tertiary)
+            VStack(spacing: 10) {
+                ZStack {
+                    Circle().fill(Theme.purple.opacity(0.10)).frame(width: 64, height: 64)
+                    Image(systemName: "text.alignleft").font(.system(size: 24)).foregroundStyle(Theme.purple.opacity(0.9))
+                }
+                Text("Toca una transcripción para verla")
+                    .font(.system(size: 14, weight: .medium)).foregroundStyle(.secondary)
+                Text("Márcalas con el círculo para borrar varias").font(.system(size: 11)).foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
