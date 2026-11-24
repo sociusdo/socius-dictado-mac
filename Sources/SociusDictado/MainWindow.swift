@@ -56,7 +56,7 @@ struct MainWindowView: View {
 
 struct HistoryView: View {
     @ObservedObject private var store = TranscriptStore.shared
-    @State private var selection: TranscriptItem.ID?
+    @State private var selection = Set<TranscriptItem.ID>()
     @State private var search = ""
 
     private var filtered: [TranscriptItem] {
@@ -82,9 +82,14 @@ struct HistoryView: View {
         .toolbar {
             if !store.items.isEmpty {
                 ToolbarItemGroup {
+                    if !selection.isEmpty {
+                        Button(role: .destructive) { deleteSelected() } label: {
+                            Label("Borrar \(selection.count)", systemImage: "trash")
+                        }
+                    }
                     Button { export() } label: { Label("Exportar", systemImage: "square.and.arrow.up") }
-                    Button(role: .destructive) { store.clearAll(); selection = nil } label: {
-                        Label("Borrar todo", systemImage: "trash")
+                    Button(role: .destructive) { store.clearAll(); selection = [] } label: {
+                        Label("Borrar todo", systemImage: "trash.slash")
                     }
                 }
             }
@@ -111,6 +116,7 @@ struct HistoryView: View {
     }
 
     private var list: some View {
+        // Set selection => multi-select (⌘-click / ⇧-click). Delete key removes all.
         List(selection: $selection) {
             ForEach(filtered) { item in
                 VStack(alignment: .leading, spacing: 2) {
@@ -128,14 +134,24 @@ struct HistoryView: View {
                 .tag(item.id)
                 .contextMenu {
                     Button("Copiar") { Paster.copyToClipboard(item.text) }
-                    Button("Borrar", role: .destructive) { store.delete(item) }
+                    if selection.count > 1 && selection.contains(item.id) {
+                        Button("Borrar \(selection.count) seleccionadas", role: .destructive) { deleteSelected() }
+                    } else {
+                        Button("Borrar", role: .destructive) { store.delete(item); selection.remove(item.id) }
+                    }
                 }
             }
         }
+        .onDeleteCommand { deleteSelected() }
+    }
+
+    private func deleteSelected() {
+        store.delete(ids: selection)
+        selection = []
     }
 
     @ViewBuilder private var detail: some View {
-        if let id = selection, let item = store.items.first(where: { $0.id == id }) {
+        if selection.count == 1, let id = selection.first, let item = store.items.first(where: { $0.id == id }) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(item.title).font(.title3.weight(.semibold)).lineLimit(2)
                 HStack(spacing: 10) {
@@ -154,27 +170,51 @@ struct HistoryView: View {
                 HStack {
                     Button { Paster.copyToClipboard(item.text) } label: { Label("Copiar", systemImage: "doc.on.doc") }
                     Spacer()
-                    Button(role: .destructive) { store.delete(item); selection = nil } label: {
+                    Button(role: .destructive) { store.delete(item); selection = [] } label: {
                         Label("Borrar", systemImage: "trash")
                     }
                 }
             }
             .padding(18)
+        } else if selection.count > 1 {
+            VStack(spacing: 12) {
+                Image(systemName: "checklist").font(.system(size: 30)).foregroundStyle(Theme.purple)
+                Text("\(selection.count) seleccionadas").font(.headline)
+                Button(role: .destructive) { deleteSelected() } label: {
+                    Label("Borrar \(selection.count)", systemImage: "trash")
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            Text("Selecciona una transcripción").foregroundStyle(.secondary)
+            Text("Selecciona una transcripción\n(⌘-clic o ⇧-clic para varias)")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
     private func export() {
+        let md = store.items.map { item in
+            "## \(item.title)\n\(Self.dateFmt.string(from: item.date)) · \(Self.durationString(item.duration)) · \(item.words) palabras\n\n\(item.text)\n"
+        }.joined(separator: "\n---\n\n")
+
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "socius-dictado.md"
-        panel.allowedContentTypes = []
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        let md = store.items.map { item in
-            "## \(Self.dateFmt.string(from: item.date)) · \(Self.durationString(item.duration)) · \(item.words) palabras\n\n\(item.text)\n"
-        }.joined(separator: "\n---\n\n")
-        try? md.data(using: .utf8)?.write(to: url)
+        panel.canCreateDirectories = true
+        panel.level = .modalPanel
+        NSApp.activate(ignoringOtherApps: true)
+        // begin() (not runModal) so the panel reliably comes to the front for an
+        // accessory app instead of opening hidden behind the window.
+        let target = NSApp.keyWindow ?? NSApp.windows.first
+        let handler: (NSApplication.ModalResponse) -> Void = { resp in
+            guard resp == .OK, let url = panel.url else { return }
+            try? md.data(using: .utf8)?.write(to: url)
+        }
+        if let target {
+            panel.beginSheetModal(for: target, completionHandler: handler)
+        } else {
+            panel.begin(completionHandler: handler)
+        }
     }
 
     static let dateFmt: DateFormatter = {

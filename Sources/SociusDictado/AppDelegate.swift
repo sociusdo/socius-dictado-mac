@@ -43,10 +43,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             visibility: { [weak self] in self?.toggleVisibility() },
             dictation:  { [weak self] in self?.controller.primaryTap() })
 
-        // Ask for Accessibility up front (needed to paste). Non-blocking prompt.
-        if !Permissions.accessibilityTrusted() {
-            Permissions.requestAccessibility()
-        }
+        // Log the Accessibility state at launch so we can confirm (not guess)
+        // whether a granted permission actually took effect for this process.
+        let trusted = Permissions.accessibilityTrusted()
+        Diag.log("launch: AXIsProcessTrusted=\(trusted) path=\(Bundle.main.bundlePath)")
+        // If not trusted, register with TCC now (adds the app to the list with the
+        // CURRENT, stable signature). Once granted + relaunched, this never fires.
+        if !trusted { Permissions.requestAccessibility() }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

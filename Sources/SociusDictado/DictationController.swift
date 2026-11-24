@@ -22,6 +22,7 @@ final class DictationController: ObservableObject {
     private let store = TranscriptStore.shared
     private var lastRecordingURL: URL?
     private var task: Task<Void, Never>?
+    private var accessibilityAlerted = false
     private var recordingStarted: Date?
     private var lastDuration: TimeInterval = 0
 
@@ -115,9 +116,13 @@ final class DictationController: ObservableObject {
         Diag.log("deliver: trusted=\(trusted) front=\(front) chars=\(text.count)")
 
         guard trusted else {
-            // No Accessibility permission -> cannot paste. Copy only + explain.
+            // No Accessibility permission -> cannot paste. Copy only + explain ONCE
+            // per launch (avoid the pop-up storm the user hit).
             flashDone(.copiedOnly)
-            presentAccessibilityAlert()
+            if !accessibilityAlerted {
+                accessibilityAlerted = true
+                presentAccessibilityAlert()
+            }
             return
         }
         let ok = Paster.pasteAtCursor(text)   // don't gate on fragile focus detection
@@ -160,7 +165,6 @@ final class DictationController: ObservableObject {
     }
 
     private func presentAccessibilityAlert() {
-        Permissions.requestAccessibility()   // adds the app to the list / shows the system prompt
         NSApp.activate(ignoringOtherApps: true)
         let a = NSAlert()
         a.messageText = "Falta permiso de Accesibilidad para pegar"
@@ -168,9 +172,10 @@ final class DictationController: ObservableObject {
         Tu texto YA quedó copiado (puedes pegarlo con ⌘V). Para que se pegue solo:
 
         1. Abre Ajustes del Sistema → Privacidad y seguridad → Accesibilidad.
-        2. Si ves una entrada vieja "Socius Dictado", quítala con el botón −.
-        3. Activa el switch de "Socius Dictado".
-        4. Vuelve a dictar: ahora se pegará donde esté el cursor.
+        2. Activa (o reactiva) el switch de "Socius Dictado".
+        3. MUY IMPORTANTE: cierra y vuelve a abrir Socius Dictado — el permiso solo aplica al reabrir.
+
+        Esta alerta no volverá a salir en esta sesión.
         """
         a.alertStyle = .warning
         a.addButton(withTitle: "Abrir Accesibilidad")

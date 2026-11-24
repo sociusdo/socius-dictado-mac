@@ -96,19 +96,21 @@ struct OrbView: View {
     }
 
     private var menu: some View {
+        // Tap gestures (not Buttons): a non-activating panel doesn't make AppKit
+        // controls clickable on the first click, but SwiftUI gestures work — same
+        // as the orb tap. This is what makes "Cancelar" actually cancel.
         VStack(spacing: 6) {
             ForEach(menuItems) { item in
-                Button(action: item.action) {
-                    HStack(spacing: 6) {
-                        Image(systemName: item.icon).font(.system(size: 11, weight: .semibold))
-                        Text(item.label).font(.system(size: 11, weight: .medium))
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Capsule().fill(Color.black.opacity(0.55)))
+                HStack(spacing: 6) {
+                    Image(systemName: item.icon).font(.system(size: 11, weight: .semibold))
+                    Text(item.label).font(.system(size: 11, weight: .medium))
                 }
-                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Capsule().fill(Color.black.opacity(0.7)))
+                .contentShape(Capsule())
+                .onTapGesture { item.action() }
             }
         }
         .frame(width: 112)

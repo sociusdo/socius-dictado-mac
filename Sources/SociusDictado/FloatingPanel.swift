@@ -42,7 +42,7 @@ final class FloatingPanel: NSPanel, NSWindowDelegate {
     // window origin by the ORB's rect — not the whole window — otherwise the empty
     // area above the orb counts as "on screen" and the orb slips off the bottom.
     private let orbCenterYFromBottom: CGFloat = 30
-    private let orbRadius: CGFloat = 26
+    private let orbRadius: CGFloat = 24   // visual radius (orb is 48) so it touches edges exactly
 
     override func setFrameOrigin(_ point: NSPoint) {
         super.setFrameOrigin(clampedOrigin(point))
@@ -55,7 +55,8 @@ final class FloatingPanel: NSPanel, NSWindowDelegate {
     }
 
     private func clampedOrigin(_ p: NSPoint) -> NSPoint {
-        guard let vf = (screen ?? NSScreen.main)?.visibleFrame else { return p }
+        // Full screen frame (not visibleFrame) so the orb can rest right at any edge.
+        guard let vf = (screen ?? NSScreen.main)?.frame else { return p }
         let cx = frame.width / 2
         let minX = vf.minX - (cx - orbRadius)
         let maxX = vf.maxX - (cx + orbRadius)

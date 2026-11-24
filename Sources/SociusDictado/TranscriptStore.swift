@@ -78,6 +78,12 @@ final class TranscriptStore: ObservableObject {
         save()
     }
 
+    func delete(ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+        items.removeAll { ids.contains($0.id) }
+        save()
+    }
+
     func clearAll() {
         items.removeAll()
         save()
